@@ -49,16 +49,6 @@ server = mc.createServer({
     'max-players': maxPlayers = 100
 });
 
-function sleep(milliseconds) {
-    const date = Date.now();
-    let currentDate = null;
-    do {
-      currentDate = Date.now();
-    } 
-    while (currentDate - date < milliseconds);
-}
-
-
 module.exports = (onticord) => {
     
 	onticord.on('clientPacket', (meta, data, client, cancelDefault) => {
@@ -159,7 +149,6 @@ module.exports = (onticord) => {
                                 proxyClient = null
                                 announce(`Connection reset by 2b2t server.`, client);
                             }
-                            // setTimeout(startQueuing, 100); // reconnect after 100 ms
                         });
                         
                         player.on('error', (err) => {
@@ -169,7 +158,6 @@ module.exports = (onticord) => {
                                 announce(`Connection error by 2b2t server. Error message: ${err}`, client);
                             }
                             console.log('err', err);
-                            // setTimeout(startQueuing, 100); // reconnect after 100 ms
                         });
                         client.on('end', () => { //Remove person from 2b2t if they leave the game.
                             player.write(0xff, {reason: "client.disconnect"}); //Disconnect the player from 2b2t
