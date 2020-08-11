@@ -1,0 +1,18 @@
+{
+	"defaultServer": "lobby",
+	"servers": {
+		"lobby": {
+			"host": "localhost",
+			"port": 25580
+		},
+		"2b2t": {
+			"host": "localhost",
+			"port": 25567,
+			"restricted": true
+		},
+		"main": {
+			"host": "srv03.lostlands.co",
+			"port": 25580
+		}
+	}
+}
