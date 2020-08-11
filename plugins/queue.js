@@ -1,3 +1,13 @@
+/*
+
+Lost Lands -> 2b2t queue plugin
+
+This plugin allows the ability to join 2b2t's queue while playing on Lost Lands.
+
+This plugin is based on the project 2bored2wait created by 'themoonisacheese' - https://github.com/themoonisacheese/2bored2wait
+
+*/
+
 const path = require('path')
 const fs = require('fs')
 const mc = require('minecraft-protocol');
@@ -180,11 +190,6 @@ module.exports = (onticord) => {
 
 server.on('login', (newProxyClient) => { // handle login
 
-    //console.log(newProxyClient.username);
-    //console.log(players);
-
-    
-
     var player = players.get(newProxyClient.username)
 
     newProxyClient.write('login', {
@@ -205,7 +210,8 @@ server.on('login', (newProxyClient) => { // handle login
 
 
 function filterPacketAndSend(data, meta, dest) {
-	if (meta.name !="keep_alive" && meta.name !="update_time") { //keep alive packets are handled by the client we created, so if we were to forward them, the minecraft client would respond too and the server would kick us for responding twice.
+	if (meta.name !="keep_alive" && meta.name !="update_time") { 
+        //keep alive packets are handled by the client we created, so if we were to forward them, the minecraft client would respond too and the server would kick us for responding twice.
 		dest.write(meta.name, data);
     }
 }
