@@ -1,0 +1,29 @@
+{
+  "name": "onticord",
+  "version": "0.2.0-alpha",
+  "description": "The powerful Minecraft proxy server for scaling networks",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node start.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethanent/onticord.git"
+  },
+  "keywords": [
+    "onticord",
+    "minecraft",
+    "network",
+    "link",
+    "server"
+  ],
+  "author": "Ethan Davis",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "bugs": {
+    "url": "https://github.com/ethanent/onticord/issues"
+  },
+  "homepage": "https://github.com/ethanent/onticord#readme",
+  "dependencies": {
+    "minecraft-protocol": "^1.5.0"
+  }
+}

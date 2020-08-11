@@ -1,0 +1,11 @@
+{
+	"listen": {
+		"port": 25565,
+		"host": "localhost"
+	},
+	"motd": "&aLost Lands",
+	"maxPlayers": 1000,
+	"onlineMode": false,
+	"icon": "icon.png",
+	"bungeeForward": true
+}
