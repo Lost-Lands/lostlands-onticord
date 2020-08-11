@@ -104,7 +104,7 @@ module.exports = class OnticordServer extends EventEmitter {
 				client.write('respawn', {
 					'dimension': 1,
 					'difficulty': data.difficulty,
-					'gamemode': 1, //data.gameMode
+					'gamemode': data.gameMode,
 					'levelType': data.levelType
 				})
 
@@ -112,14 +112,14 @@ module.exports = class OnticordServer extends EventEmitter {
 					client.write('respawn', {
 						'dimension': data.dimension === 1 ? 0 : 1,
 						'difficulty': data.difficulty,
-						'gamemode': 1,
+						'gamemode': data.gameMode,
 						'levelType': data.levelType
 					})
 
 					client.write('respawn', {
 						'dimension': data.dimension,
 						'difficulty': data.difficulty,
-						'gamemode': 1,
+						'gamemode': data.gameMode,
 						'levelType': data.levelType
 					})
 				})
