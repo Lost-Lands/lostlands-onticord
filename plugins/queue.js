@@ -38,7 +38,6 @@ let proxyClient;
 let server;
 
 
-
 //Lost Lands -> 2b2t server
 server = mc.createServer({
     'online-mode': false,
@@ -57,8 +56,26 @@ module.exports = (onticord) => {
 			
 			const segments = data.message.split(' ')
 
-			if (segments[0] === '/queue') {
-				if (segments[1] && segments[2]) {
+			if (segments[0] === '/queue' || segments[0] === '/q' || segments[0] === '/2b2t') {
+                let joined = false;
+                let failed = false;
+                if (segments[1] == "join") {
+                    if (joined == false) {
+                        console.log("Sending "+player.username+" to 2b2t!");
+                        client.currentServer = '2b2t';
+                        client.finalDestination = '2b2t';
+                        joined = true;
+
+                        onticord.sendClient(client, config.servers['2b2t'].host, config.servers['2b2t'].port);
+                        
+                        announce(`Welcome to 2b2t! You are now in the 2b2t queue server and will join shortly.`, client);
+                    }                
+                }
+                else if (segments[1] == "leave") {
+                    
+                }
+                
+				else if (segments[1] && segments[2]) {
                     var user = segments[1];
                     var password = segments[2];                    
                     player = mc.createClient({ // connect to 2b2t
@@ -71,8 +88,6 @@ module.exports = (onticord) => {
                     // --> Catch error for signin here <--
                     announce("Attempting to join the 2b2t queue", client);
                     var countMessage = 20;
-                    let joined = false;
-                    let failed = false;
                     if (failed == false) {
                         player.on("packet", (data, meta) => { // each time 2b2t sends a packet
                             if (data.username) {
@@ -92,30 +107,22 @@ module.exports = (onticord) => {
                                 if (headermessage.text.split("\n")[5]) {
                                     let positioninqueue = headermessage.text.split("\n")[5].substring(25);
                                     let ETA = headermessage.text.split("\n")[6].substring(27);
-                       
-                                    if (positioninqueue !== "None") { //wait until 2b2t's header message has actual position and estimated time values
-                                        if (countMessage == 20) {
-                                            countMessage = 0
-                                            announce(`Position in queue: ${positioninqueue}, ETA: ${ETA}`, client);
-                                        }
-    
-                                        countMessage++
-                                    }
-                                    else if (positioninqueue == "None") {
+                                    if (positioninqueue == "None") {
                                         if (countMessage == 20) {
                                             countMessage = 0
                                             announce(`Waiting for 2b2t...`, client);
+                                            
                                         }
+                                        countMessage++
                                     }
-                                    else if (positioninqueue === '5' || positioninqueue === '4' || positioninqueue === '3' || positioninqueue === '2' || positioninqueue === '1') {
-                                        if (joined === false) {
-                                            console.log("Sending "+player.username+" to 2b2t!");
-                                            onticord.sendClient(client, config.servers['2b2t'].host, config.servers['2b2t'].port);
-                                            client.currentServer = '2b2t';
-                                            client.finalDestination = '2b2t';
-                                            announce(`Welcome to 2b2t! You are now in the 2b2t queue server and will join shortly.`, client);
-                                            //give enough time for the player to fully join
-                                            joined = true;
+                                    else if (positioninqueue !== "None") { //wait until 2b2t's header message has actual position and estimated time values
+                                        if (joined == false) {
+                                            if (countMessage == 20) {
+                                                countMessage = 0
+                                                announce(`Position in queue: ${positioninqueue}, ETA: ${ETA}`, client);
+                                                
+                                            }
+                                            countMessage++
                                         }
                                     }
                                     else {
@@ -124,8 +131,17 @@ module.exports = (onticord) => {
                                     }
                                 }
                                 else if (headermessage.text == "\n§7§o§l2BUILDERS§r\n§7§o§l2TOOLS     §r\n") {
-                                    announce(`There's currently no 2b2t queue. Please join through the official 2b2t IP, 2b2t.org`, client);
-                                    player.write(0xff, {reason: "client.disconnect"});
+                                    //Player has logged into 2b2t successfully
+                                    if (joined == false) {
+                                        if (playerId) { //if playerId exists yet, send client to 2b2t
+                                            console.log("Sending "+player.username+" to 2b2t!");
+                                            client.currentServer = '2b2t';
+                                            client.finalDestination = '2b2t';
+                                            announce(`Welcome to 2b2t!`, client);
+                                            joined = true
+                                            onticord.sendClient(client, config.servers['2b2t'].host, config.servers['2b2t'].port);
+                                        }
+                                    }   
                                 }                            
                             }
                             if(meta.name=="login"){
@@ -139,9 +155,7 @@ module.exports = (onticord) => {
                             if (data.data[0].name) { //filter out unnecessary player info
                                 player.entityID = playerId
                                 players.set(player.username, player);
-                                
                             }
-                            
                         })
                         // set up actions in case we get disconnected.
                         player.on('end', (err) => {
@@ -167,7 +181,7 @@ module.exports = (onticord) => {
                     }
                                
                 } else {
-					announce("Usage: /queue {username} {password}", client);
+					announce(`Usage: ${segments[0]} {username} {password}`, client);
 				}
 
 				cancelDefault()
@@ -183,12 +197,12 @@ server.on('login', (newProxyClient) => { // handle login
 
     newProxyClient.write('login', {
         entityId: player.entityID,
-        levelType: 'flat',
-        gameMode: 0,
-        dimension: 1,
-        difficulty: 0,
-        maxPlayers: server.maxPlayers,
-        reducedDebugInfo: false
+        levelType: 'default',
+			gameMode: 0,
+			dimension: 0,
+			difficulty: 2,
+			maxPlayers: server.maxPlayers,
+			reducedDebugInfo: false
     });
     newProxyClient.on('packet', (data, meta) => { // redirect everything we do to 2b2t
         filterPacketAndSend(data, meta, player);
