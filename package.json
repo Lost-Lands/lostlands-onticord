@@ -24,8 +24,6 @@
   },
   "homepage": "https://github.com/ethanent/onticord#readme",
   "dependencies": {
-    "add-dashes-to-uuid": "^1.0.0",
-    "minecraft-api": "0.0.3",
     "minecraft-protocol": "^1.5.0"
   }
 }

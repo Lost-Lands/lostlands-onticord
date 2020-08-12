@@ -1,10 +1,6 @@
 {
-	"defaultServer": "lobby",
+	"defaultServer": "main",
 	"servers": {
-		"lobby": {
-			"host": "localhost",
-			"port": 25580
-		},
 		"2b2t": {
 			"host": "localhost",
 			"port": 25567,
