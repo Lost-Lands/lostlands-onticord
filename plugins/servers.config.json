@@ -2,12 +2,13 @@
 	"defaultServer": "main",
 	"servers": {
 		"2b2t": {
+			"connection_host": "localhost",
 			"host": "localhost",
 			"port": 25567,
 			"restricted": true
 		},
 		"main": {
-			"host": "srv03.lostlands.co",
+			"host": "localhost",
 			"port": 25580
 		}
 	}
