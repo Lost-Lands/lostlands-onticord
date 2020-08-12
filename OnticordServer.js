@@ -36,15 +36,19 @@ module.exports = class OnticordServer extends EventEmitter {
 			reply(null, pingRes)
 		}
 
+
+		console.log("Starting Onticord on "+config.listen.host+":"+config.listen.port)
+
 		this.core = new mc.createServer({
-			'port': config.port,
-			'host': config.host,
+			'port': config.listen.port,
+			'host': config.listen.host,
 			'online-mode': config.onlineMode,
 			'beforePing': this.beforePing,
 			'version': false,
 			'keepAlive': false,
 			'maxPlayers': config.maxPlayers
 		})
+
 
 		this.core.on('login', (client) => {
 
