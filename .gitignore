@@ -60,3 +60,5 @@ typings/
 # Default Onticord configuration files
 # config.json
 # basics.config.json
+config.json
+plugins/servers.config.json
