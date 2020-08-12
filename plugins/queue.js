@@ -148,7 +148,13 @@ module.exports = (onticord) => {
                                         if (joined == false) {
                                             if (countMessage == 20) {
                                                 countMessage = 0;
-                                                announce(`Position in queue: ${positioninqueue}, ETA: ${ETA}`, client);
+                                                if (ETA) {
+                                                    announce(`Position in queue: ${positioninqueue}, ETA: ${ETA}`, client);
+                                                }
+                                                else {
+                                                    announce(`Position in queue: ${positioninqueue}`, client);
+                                                }
+                                                
 
                                             }
                                             countMessage++
