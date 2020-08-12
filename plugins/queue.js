@@ -89,6 +89,7 @@ module.exports = (onticord) => {
     
                             if (meta.name === "playerlist_header") { // if the packet contains the player list, we can use it to see our place in the queue
                                 let headermessage = JSON.parse(data.header);
+                                console.log(data);
                                 if (headermessage.text.split("\n")[5]) {
                                     let positioninqueue = headermessage.text.split("\n")[5].substring(25);
                                     let ETA = headermessage.text.split("\n")[6].substring(27);
@@ -112,6 +113,7 @@ module.exports = (onticord) => {
                                             console.log("Sending "+player.username+" to 2b2t!");
                                             onticord.sendClient(client, config.servers['2b2t'].host, config.servers['2b2t'].port);
                                             client.currentServer = '2b2t';
+                                            client.finalDestination = '2b2t';
                                             announce(`Welcome to 2b2t! You are now in the 2b2t queue server and will join shortly.`, client);
                                             //give enough time for the player to fully join
                                             joined = true;

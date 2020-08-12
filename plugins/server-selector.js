@@ -1,5 +1,6 @@
 const path = require('path')
 const fs = require('fs')
+const MinecraftAPI = require('minecraft-api');
 
 const configLocation = path.join(__dirname, 'servers.config.json')
 var config = JSON.parse(fs.readFileSync(configLocation))
@@ -24,6 +25,14 @@ module.exports = (onticord) => {
 								'message': JSON.stringify({
 									'text': '',
 									'extra': [{'text': 'Lost Lands', 'color': 'dark_aqua'}, {'text': ' > ', 'color': 'dark_gray'}, {'text': 'You do not have access to that server.', 'color': 'gray'}]
+								})
+							})
+						}
+						else if (client.currentServer == client.finalDestination) {
+							client.write('chat', {
+								'message': JSON.stringify({
+									'text': '',
+									'extra': [{'text': 'Lost Lands', 'color': 'dark_aqua'}, {'text': ' > ', 'color': 'dark_gray'}, {'text': 'You cannot return to Lost Lands from your current server. You must leave and rejoin. ', 'color': 'gray'}]
 								})
 							})
 						}
