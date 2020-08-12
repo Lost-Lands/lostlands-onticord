@@ -3,7 +3,7 @@
 		"port": 25565,
 		"host": "localhost"
 	},
-	"motd": "&aLost Lands",
+	"motd": "&aLost Lands Dev Proxy Server",
 	"maxPlayers": 1000,
 	"onlineMode": true,
 	"icon": "icon.png",
