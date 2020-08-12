@@ -49,7 +49,6 @@ module.exports = class OnticordServer extends EventEmitter {
 		this.core.on('login', (client) => {
 
 			if (config.whitelist == true) {
-				console.log(whitelist);
 				if (whitelist.uuid.indexOf(client.uuid) > -1){
 					
 					//User is whitelisted.
