@@ -61,17 +61,24 @@ module.exports = (onticord) => {
                 let failed = false;
                 if (segments[1] == "join") {
                     if (joined == false) {
-                        console.log("Sending "+player.username+" to 2b2t!");
+                        console.log("[2b2t -> Lost Lands] Sending "+player.username+" to 2b2t!");
                         client.currentServer = '2b2t';
                         client.finalDestination = '2b2t';
                         joined = true;
 
                         onticord.sendClient(client, config.servers['2b2t'].host, config.servers['2b2t'].port);
                         
-                        announce(`Welcome to 2b2t! You are now in the 2b2t queue server and will join shortly.`, client);
+                        announce(`Welcome to 2b2t!`, client);
                     }                
                 }
                 else if (segments[1] == "leave") {
+                    if (joined = false) {
+                        player.write(0xff, {reason: "client.disconnect"});
+                        announce(`You have been removed from 2b2t.`, client);
+                    }
+                    else {
+                        announce(`Please leave the server to leave 2b2t.`, client);
+                    }
                     
                 }
                 
@@ -92,12 +99,18 @@ module.exports = (onticord) => {
                         player.on("packet", (data, meta) => { // each time 2b2t sends a packet
                             if (data.username) {
                                 player.username = data.username;
+
                                 if (player.username !== client.username) {
                                     announce(`The username you attempted to login does not match the username of the account you are currently on. Leaving the 2b2t queue.`, client);
                                     failed = true;
                                     player.write(0xff, {reason: "client.disconnect"}); //disconnect the player
                                 }
                             }
+                            if (!proxyClient) {
+                                proxyClient = players.get(player.username+"-proxy");
+                            }
+
+
                             if (proxyClient) { //if user is logged into 2b2t, send packets
                                 filterPacketAndSend(data, meta, proxyClient);
                             }
@@ -134,7 +147,7 @@ module.exports = (onticord) => {
                                     //Player has logged into 2b2t successfully
                                     if (joined == false) {
                                         if (playerId) { //if playerId exists yet, send client to 2b2t
-                                            console.log("Sending "+player.username+" to 2b2t!");
+                                            console.log("[2b2t -> Lost Lands] Sending "+player.username+" to 2b2t!");
                                             client.currentServer = '2b2t';
                                             client.finalDestination = '2b2t';
                                             announce(`Welcome to 2b2t!`, client);
@@ -176,7 +189,7 @@ module.exports = (onticord) => {
                         });
                         client.on('end', () => { //Remove person from 2b2t if they leave the game.
                             player.write(0xff, {reason: "client.disconnect"}); //Disconnect the player from 2b2t
-                            console.log("Removed player from 2b2t");
+                            console.log("[2b2t -> Lost Lands] Removed "+player.username+" from 2b2t");
                         })     
                     }
                                
@@ -193,22 +206,28 @@ module.exports = (onticord) => {
 
 server.on('login', (newProxyClient) => { // handle login
 
+
+    
     var player = players.get(newProxyClient.username)
+
+
 
     newProxyClient.write('login', {
         entityId: player.entityID,
         levelType: 'default',
-			gameMode: 0,
-			dimension: 0,
-			difficulty: 2,
-			maxPlayers: server.maxPlayers,
-			reducedDebugInfo: false
+        gameMode: 0,
+        dimension: 0,
+        difficulty: 2,
+        maxPlayers: server.maxPlayers,
+        reducedDebugInfo: false
     });
     newProxyClient.on('packet', (data, meta) => { // redirect everything we do to 2b2t
         filterPacketAndSend(data, meta, player);
     });
 
-    proxyClient = newProxyClient;
+    players.set(newProxyClient.username+"-proxy", newProxyClient)
+
+    //proxyClient = newProxyClient;
 });
 
 
