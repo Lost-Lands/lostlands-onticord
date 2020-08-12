@@ -3,10 +3,19 @@ const path = require('path')
 const fs = require('fs')
 
 const mc = require('minecraft-protocol')
+
 const ccf = require(path.join(__dirname, 'utility', 'colorCodeFormat.js'))
+
+var whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, "whitelist.json")));
+
 
 module.exports = class OnticordServer extends EventEmitter {
 	constructor(config) {
+
+		if (config.whitelist == true) {
+			console.log("[Onticord] Whitelist Enabled");
+		}
+
 		super()
 
 		this.beforePing = (res, client, reply) => {
@@ -38,18 +47,33 @@ module.exports = class OnticordServer extends EventEmitter {
 		})
 
 		this.core.on('login', (client) => {
-            console.log('[+] ' + client.username + ' (' + client.uuid + ') (' + client.socket.remoteAddress + ')')
-            
-            client.write('chat', {
-                'message': JSON.stringify({
-                    'text': '',
-                    'extra': [{'text': 'Welcome to Lost Lands!\n', 'color': 'yellow'}, {'text': 'Please login or register to continue.', 'color': 'light_gray'}]
-                })
-            })
 
-			client.on('end', () => {
-				console.log('[-] ' + client.username + ' (' + client.uuid + ')')
-			})
+			if (config.whitelist == true) {
+				console.log(whitelist);
+				if (whitelist.uuid.indexOf(client.uuid) > -1){
+					
+					//User is whitelisted.
+					console.log(client.username + ' (' + client.uuid + ') is whitelisted.')
+					console.log('[+] ' + client.username + ' (' + client.uuid + ') (' + client.socket.remoteAddress + ')')
+					client.on('end', () => {
+						console.log('[-] ' + client.username + ' (' + client.uuid + ')')
+					})
+				}
+				else {
+					//User is not whitelisted
+					client.end(ccf("&cYou are not whitelisted."))
+				}
+			}
+			else {
+				console.log('[+] ' + client.username + ' (' + client.uuid + ') (' + client.socket.remoteAddress + ')')
+				client.on('end', () => {
+					console.log('[-] ' + client.username + ' (' + client.uuid + ')')
+				})
+			}
+		
+
+
+            
 		})
 
 		this.config = config
@@ -90,8 +114,10 @@ module.exports = class OnticordServer extends EventEmitter {
 		})
 
 		if (this.config.bungeeForward) {
+			console.log("Sending UUID: "+client.uuid);
 			let fakeClientHost = '\x00' + client.socket.remoteAddress + '\x00' + client.uuid
 			if (client.hasOwnProperty('profile') && client.profile.hasOwnProperty('properties')) {
+				console.log("Sending profile properties")
 				fakeClientHost += '\x00' + JSON.stringify(client.profile.properties)
 			}
 			client.fakeClient.tagHost = fakeClientHost
@@ -139,7 +165,9 @@ module.exports = class OnticordServer extends EventEmitter {
 
 			this.emit('serverPacket', meta, data, client.fakeClient, cancelMethod)
 
-			if (meta.state === mc.states.PLAY && client.fakeClient.state === mc.states.PLAY && allowPacket) client.write(meta.name, data)
+			if (meta.state === mc.states.PLAY && client.fakeClient.state === mc.states.PLAY && allowPacket) {
+				client.write(meta.name, data)
+			}
 		})
 
 		client.on('packet', (data, meta) => {
@@ -150,7 +178,9 @@ module.exports = class OnticordServer extends EventEmitter {
 
 			this.emit('clientPacket', meta, data, client, cancelMethod)
 
-			if (meta.state === mc.states.PLAY && client.fakeClient.state === mc.states.PLAY && allowPacket) client.fakeClient.write(meta.name, data)
+			if (meta.state === mc.states.PLAY && client.fakeClient.state === mc.states.PLAY && allowPacket) {
+				client.fakeClient.write(meta.name, data)
+			}
 		})
 
 		client.fakeClient.on('end', (reason) => {

@@ -5,7 +5,8 @@
 	},
 	"motd": "&aLost Lands",
 	"maxPlayers": 1000,
-	"onlineMode": false,
+	"onlineMode": true,
 	"icon": "icon.png",
-	"bungeeForward": true
+	"bungeeForward": true,
+	"whitelist": true
 }
