@@ -47,6 +47,7 @@ let players = new Map()
 let proxyClient;
 let server;
 
+console.log("[Lost Lands -> 2b2t] Starting server on "+config.servers['2b2t'].host+":"+config.servers['2b2t'].port)
 
 //Lost Lands -> 2b2t server
 server = mc.createServer({
@@ -76,7 +77,7 @@ module.exports = (onticord) => {
                         client.finalDestination = '2b2t';
                         joined = true;
 
-                        onticord.sendClient(client, config.servers['2b2t'].host, config.servers['2b2t'].port);
+                        onticord.sendClient(client, config.servers['2b2t'].connection_host, config.servers['2b2t'].port);
 
                         announce(`Welcome to 2b2t!`, client);
                     }
@@ -85,6 +86,7 @@ module.exports = (onticord) => {
                         player.write(0xff, {
                             reason: "client.disconnect"
                         });
+                        players.delete(player.username);
                         announce(`You have been removed from 2b2t.`, client);
                     } else {
                         announce(`Please leave the server to leave 2b2t.`, client);
@@ -111,9 +113,14 @@ module.exports = (onticord) => {
                                 if (player.username !== client.username) {
                                     announce(`The username you attempted to login does not match the username of the account you are currently on. Leaving the 2b2t queue.`, client);
                                     failed = true;
-                                    player.write(0xff, {
+
+                                    var leftPlayer = players.get(client.username)
+
+                                    leftPlayer.write(0xff, {
                                         reason: "client.disconnect"
-                                    }); //disconnect the player
+                                    }); //Disconnect the player from 2b2t
+                                    players.delete(player.username);
+                                    players.delete(player.username + "-proxy");
                                 }
                             }
                             if (!proxyClient) {
@@ -140,7 +147,7 @@ module.exports = (onticord) => {
                                     } else if (positioninqueue !== "None") { //wait until 2b2t's header message has actual position and estimated time values
                                         if (joined == false) {
                                             if (countMessage == 20) {
-                                                countMessage = 0
+                                                countMessage = 0;
                                                 announce(`Position in queue: ${positioninqueue}, ETA: ${ETA}`, client);
 
                                             }
@@ -160,8 +167,8 @@ module.exports = (onticord) => {
                                             client.currentServer = '2b2t';
                                             client.finalDestination = '2b2t';
                                             announce(`Welcome to 2b2t!`, client);
-                                            joined = true
-                                            onticord.sendClient(client, config.servers['2b2t'].host, config.servers['2b2t'].port);
+                                            joined = true;
+                                            onticord.sendClient(client, config.servers['2b2t'].connection_host, config.servers['2b2t'].port);
                                         }
                                     }
                                 }
@@ -175,7 +182,7 @@ module.exports = (onticord) => {
 
                             //We know we can access playerId once player_info is sent
                             if (data.data[0].name) { //filter out unnecessary player info
-                                player.entityID = playerId
+                                player.entityID = playerId;
                                 players.set(player.username, player);
                             }
                         })
@@ -196,11 +203,19 @@ module.exports = (onticord) => {
                             }
                             console.log('err', err);
                         });
+
                         client.on('end', () => { //Remove person from 2b2t if they leave the game.
-                            player.write(0xff, {
+                            console.log(client.username)
+
+                            var leftPlayer = players.get(client.username)
+
+                            leftPlayer.write(0xff, {
                                 reason: "client.disconnect"
                             }); //Disconnect the player from 2b2t
-                            console.log("[2b2t -> Lost Lands] Removed " + player.username + " from 2b2t");
+                            players.delete(player.username);
+                            players.delete(player.username + "-proxy");
+
+                            console.log("[2b2t -> Lost Lands] Removed " + leftPlayer.username + " from 2b2t");
                         })
                     }
 
@@ -249,4 +264,4 @@ function filterPacketAndSend(data, meta, dest) {
     }
 }
 
-console.log("[2b2t -> Lost Lands] Plugin loaded.");
+console.log("[Lost Lands -> 2b2t] Plugin loaded.");
