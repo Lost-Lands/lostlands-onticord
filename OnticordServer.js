@@ -52,14 +52,14 @@ module.exports = class OnticordServer extends EventEmitter {
 				if (whitelist.uuid.indexOf(client.uuid) > -1){
 					
 					//User is whitelisted.
-					console.log(client.username + ' (' + client.uuid + ') is whitelisted.')
+					console.log('[INFO] '+client.username + ' (' + client.uuid + ') is whitelisted.')
 					console.log('[+] ' + client.username + ' (' + client.uuid + ') (' + client.socket.remoteAddress + ')')
 					client.on('end', () => {
 						console.log('[-] ' + client.username + ' (' + client.uuid + ')')
 					})
 				}
 				else {
-					//User is not whitelisted
+					console.log('[INFO] '+client.username + ' (' + client.uuid + ') attempted to join but is not whitelisted.')
 					client.end(ccf("&cYou are not whitelisted."))
 				}
 			}
@@ -113,10 +113,8 @@ module.exports = class OnticordServer extends EventEmitter {
 		})
 
 		if (this.config.bungeeForward) {
-			console.log("Sending UUID: "+client.uuid);
 			let fakeClientHost = '\x00' + client.socket.remoteAddress + '\x00' + client.uuid
 			if (client.hasOwnProperty('profile') && client.profile.hasOwnProperty('properties')) {
-				console.log("Sending profile properties")
 				fakeClientHost += '\x00' + JSON.stringify(client.profile.properties)
 			}
 			client.fakeClient.tagHost = fakeClientHost
