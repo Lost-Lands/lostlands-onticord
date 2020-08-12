@@ -1,6 +1,5 @@
 const path = require('path')
 const fs = require('fs')
-const MinecraftAPI = require('minecraft-api');
 
 const configLocation = path.join(__dirname, 'servers.config.json')
 var config = JSON.parse(fs.readFileSync(configLocation))
