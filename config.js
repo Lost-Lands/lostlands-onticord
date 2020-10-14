@@ -12,7 +12,8 @@ const defaultConfig = {
 	'maxPlayers': 1000,
 	'onlineMode': false,
 	'icon': 'icon.png',
-	'bungeeForward': true
+	'bungeeForward': true,
+	'ignored_plugins': []
 }
 
 let config

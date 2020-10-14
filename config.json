@@ -8,5 +8,6 @@
 	"onlineMode": true,
 	"icon": "icon.png",
 	"bungeeForward": true,
-	"whitelist": true
+	"whitelist": true,
+	"ignored_plugins": ["server-selector", "queue"]
 }
