@@ -1,0 +1,12 @@
+{
+	"defaultServer": "lobby",
+    "lobby": {
+        "host": "localhost",
+        "port": 25566
+    },
+    "arena1": {
+        "host": "localhost",
+        "port": 25567,
+        "restricted": true
+    }
+}
