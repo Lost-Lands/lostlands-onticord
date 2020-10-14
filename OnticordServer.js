@@ -181,11 +181,15 @@ module.exports = class OnticordServer extends EventEmitter {
 		client.fakeClient.on('end', (reason) => {
 			client.end(reason || ccf('&cYou have been disconnected.'))
 			client.fakeClient = undefined;
+			
 		})
 
 		client.on('end', () => {
 			console.log('[-] ' + client.username + ' (' + client.uuid + ')')
-			client.fakeClient.end()
+			if (client.fakeClient) {
+				client.fakeClient.end()
+			}
+			
 		})
 	}
 }
