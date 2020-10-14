@@ -5,8 +5,9 @@
 	},
 	"motd": "&aLost Lands Dev Proxy Server",
 	"maxPlayers": 1000,
-	"onlineMode": true,
+	"onlineMode": false,
 	"icon": "icon.png",
 	"bungeeForward": true,
-	"whitelist": true
+	"whitelist": false,
+	"ignored_plugins": ["server-selector", "queue"]
 }

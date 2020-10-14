@@ -12,11 +12,16 @@ var whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, "whitelist.json"
 module.exports = class OnticordServer extends EventEmitter {
 	constructor(config) {
 
+		
+
+
 		if (config.whitelist == true) {
 			console.log("[Onticord] Whitelist Enabled");
 		}
 
 		super()
+
+		this.servers = require('./servers.json');
 
 		this.beforePing = (res, client, reply) => {
 			let pingRes = {
@@ -54,13 +59,9 @@ module.exports = class OnticordServer extends EventEmitter {
 
 			if (config.whitelist == true) {
 				if (whitelist.uuid.indexOf(client.uuid) > -1){
-					
 					//User is whitelisted.
 					console.log('[INFO] '+client.username + ' (' + client.uuid + ') is whitelisted.')
 					console.log('[+] ' + client.username + ' (' + client.uuid + ') (' + client.socket.remoteAddress + ')')
-					client.on('end', () => {
-						console.log('[-] ' + client.username + ' (' + client.uuid + ')')
-					})
 				}
 				else {
 					console.log('[INFO] '+client.username + ' (' + client.uuid + ') attempted to join but is not whitelisted.')
@@ -69,14 +70,7 @@ module.exports = class OnticordServer extends EventEmitter {
 			}
 			else {
 				console.log('[+] ' + client.username + ' (' + client.uuid + ') (' + client.socket.remoteAddress + ')')
-				client.on('end', () => {
-					console.log('[-] ' + client.username + ' (' + client.uuid + ')')
-				})
 			}
-		
-
-
-            
 		})
 
 		this.config = config
@@ -186,9 +180,11 @@ module.exports = class OnticordServer extends EventEmitter {
 
 		client.fakeClient.on('end', (reason) => {
 			client.end(reason || ccf('&cYou have been disconnected.'))
+			client.fakeClient = undefined;
 		})
 
 		client.on('end', () => {
+			console.log('[-] ' + client.username + ' (' + client.uuid + ')')
 			client.fakeClient.end()
 		})
 	}
