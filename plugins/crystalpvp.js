@@ -10,6 +10,11 @@ function log(message) {
 }
 
 var defaults = {
+    "mysql": {
+        "host": "mysql.ip.here",
+        "port": 3306,
+        "database": ""
+    },
     "lobby": "lobby",
     "arenas": {
         1: "arena1",
@@ -121,7 +126,6 @@ module.exports = (onticord) => {
             console.err(err);
         } else {
             //config loaded
-
             onticord.on('serverPacket', (meta, data, client, cancelDefault) => {
                 if (meta.name == "chat") {
                     var chat = JSON.parse(JSON.stringify(data.message));
