@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/ethanent/onticord#readme",
   "dependencies": {
-    "minecraft-protocol": "^1.5.0"
+    "minecraft-protocol": "^1.17.0",
+    "mysql": "^2.18.1"
   }
 }
