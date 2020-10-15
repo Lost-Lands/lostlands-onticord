@@ -110,6 +110,9 @@ function announce(msg, client) {
         })
     }
 }
+function logDeath(killer, victim, weapon) {
+    console.log(`${killer} killed ${victim} using ${weapon}`)
+}
 
 
 module.exports = (onticord) => {
@@ -125,32 +128,34 @@ module.exports = (onticord) => {
                     chat = JSON.parse(chat); // double parse, fix this
                     if (chat.extra && chat.extra[0] && chat.extra[0].extra) {
                         var deathMessage = chat.extra[0].extra;
-                        var victim;
-                        var killer;
-                        if (deathMessage[1].text) {
-                            killer = deathMessage[1].text.slice(0, -8); 
-                        }
-                        if (deathMessage[2]) {
-                            if (deathMessage[2].extra[0].text) {
-                                victim = deathMessage[2].extra[0].text
-                            }
-                        }
-
-                        console.log(`${killer} killed ${victim} ${deathMessage[3].text}`)
-
                         /*
                         console.log("extra0", deathMessage[0]);
                         console.log("extra1", deathMessage[1]);
                         console.log("extra2", deathMessage[2]);
                         console.log("extra3", deathMessage[3]);
                         */
+                         if (deathMessage[3].text.substring(1,20) == "with an End Crystal") {
+                            var victim;
+                            var killer;
+                            var weapon;
+                            //handle crystal kills
+                            weapon = "End Crystal";
+                            if (deathMessage[2]) {
+                                if (deathMessage[2].extra[0].text) {
+                                    victim = deathMessage[2].extra[0].text
+                                }
+                            }
+                            if (deathMessage[1].text) {
+                                killer = deathMessage[1].text.slice(0, -8); 
+                            }
+                            logDeath(victim, killer, weapon);
+                        }
                     }
 
                 }
             })
 
             onticord.on('clientPacket', (meta, data, client, cancelDefault) => {
-                
                 if (meta.name === 'chat') {
                     if (data.message.indexOf('/') !== 0) return
                     const segments = data.message.split(' ')
