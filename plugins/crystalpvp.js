@@ -118,7 +118,39 @@ module.exports = (onticord) => {
             console.err(err);
         } else {
             //config loaded
+
+            onticord.on('serverPacket', (meta, data, client, cancelDefault) => {
+                if (meta.name == "chat") {
+                    var chat = JSON.parse(JSON.stringify(data.message));
+                    chat = JSON.parse(chat); // double parse, fix this
+                    if (chat.extra && chat.extra[0] && chat.extra[0].extra) {
+                        var deathMessage = chat.extra[0].extra;
+                        var victim;
+                        var killer;
+                        if (deathMessage[1].text) {
+                            killer = deathMessage[1].text.slice(0, -8); 
+                        }
+                        if (deathMessage[2]) {
+                            if (deathMessage[2].extra[0].text) {
+                                victim = deathMessage[2].extra[0].text
+                            }
+                        }
+
+                        console.log(`${killer} killed ${victim} ${deathMessage[3].text}`)
+
+                        /*
+                        console.log("extra0", deathMessage[0]);
+                        console.log("extra1", deathMessage[1]);
+                        console.log("extra2", deathMessage[2]);
+                        console.log("extra3", deathMessage[3]);
+                        */
+                    }
+
+                }
+            })
+
             onticord.on('clientPacket', (meta, data, client, cancelDefault) => {
+                
                 if (meta.name === 'chat') {
                     if (data.message.indexOf('/') !== 0) return
                     const segments = data.message.split(' ')
@@ -132,9 +164,8 @@ module.exports = (onticord) => {
                         else {
                             
                         }
-                    cancelDefault()
+                        cancelDefault()
                     } else if (segments[0] === '/leave') {
-                        console.log(client.currentServer);
                         if (client.currentServer !== "lobby") {
                             onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
 					        client.currentServer = config.lobby;
