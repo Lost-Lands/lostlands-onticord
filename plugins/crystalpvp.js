@@ -1,5 +1,6 @@
 const fs = require('fs');
-const path = require('path')
+const path = require('path');
+var mysql = require('mysql');
 
 var pluginFolder = path.join(__dirname, "CrystalPVP");
 var configFile = path.join(pluginFolder, "config.json");
@@ -13,8 +14,11 @@ var defaults = {
     "mysql": {
         "host": "mysql.ip.here",
         "port": 3306,
+        "user": "",
+        "password": "",
         "database": ""
     },
+    "plan_support": false,
     "lobby": "lobby",
     "arenas": {
         1: "arena1",
@@ -26,7 +30,7 @@ function createConfig(callback) {
     if (!fs.existsSync(configFile)) {
         log("Creating configuration file...");
         fs.writeFile(configFile, JSON.stringify(defaults), function(err) {
-            if(err) {
+            if (err) {
                 callback(err);
             }
             log("Created configuration file");
@@ -36,6 +40,7 @@ function createConfig(callback) {
         callback(null, true);
     }
 }
+
 function loadConfig(callback) {
     fs.readFile(configFile, 'utf8', (err, data) => {
 
@@ -48,12 +53,14 @@ function loadConfig(callback) {
 }
 
 function init(callback) {
-    if(!fs.existsSync(pluginFolder)){
+    if (!fs.existsSync(pluginFolder)) {
         log("Creating config folder...")
-        fs.mkdir(pluginFolder, { recursive: true }, (err) => { 
-            if (err) { 
-                callback(err); 
-            } 
+        fs.mkdir(pluginFolder, {
+            recursive: true
+        }, (err) => {
+            if (err) {
+                callback(err);
+            }
             log("Created config folder");
             createConfig(function(err, response) {
                 if (err) {
@@ -68,10 +75,10 @@ function init(callback) {
                         }
                     })
                 }
-                
+
             })
-        }); 
-    
+        });
+
     } else {
         createConfig(function(err, response) {
             if (err) {
@@ -115,6 +122,7 @@ function announce(msg, client) {
         })
     }
 }
+
 function logDeath(killer, victim, weapon) {
     console.log(`${killer} killed ${victim} using ${weapon}`)
 }
@@ -126,6 +134,16 @@ module.exports = (onticord) => {
             console.err(err);
         } else {
             //config loaded
+
+            var connection = mysql.createConnection(config.mysql);
+            connection.query("CREATE TABLE IF NOT EXISTS `cpvp_teams` (`ID` INT(6) NOT NULL, `uuid` VARCHAR(32) NOT NULL, `team_name` TEXT NOT NULL, `team_rank` TEXT NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
+                if (err) {
+                    console.error(err);
+                } else {
+                    log("Successfully ran query for MySQL cpvp_teams database");
+                }
+            });
+
             onticord.on('serverPacket', (meta, data, client, cancelDefault) => {
                 if (meta.name == "chat") {
                     var chat = JSON.parse(JSON.stringify(data.message));
@@ -138,7 +156,7 @@ module.exports = (onticord) => {
                         console.log("extra2", deathMessage[2]);
                         console.log("extra3", deathMessage[3]);
                         */
-                         if (deathMessage[3].text.substring(1,20) == "with an End Crystal") {
+                        if (deathMessage[3].text.substring(1, 20) == "with an End Crystal") {
                             var victim;
                             var killer;
                             var weapon;
@@ -150,9 +168,11 @@ module.exports = (onticord) => {
                                 }
                             }
                             if (deathMessage[1].text) {
-                                killer = deathMessage[1].text.slice(0, -8); 
+                                killer = deathMessage[1].text.slice(0, -8);
                             }
-                            logDeath(victim, killer, weapon);
+                            if (config.plan_support == true) {
+                                logDeath(victim, killer, weapon);
+                            }
                         }
                     }
 
@@ -167,17 +187,16 @@ module.exports = (onticord) => {
                         if (segments[1]) {
                             if (config.arenas[segments[1]]) {
                                 onticord.sendClient(client, onticord.servers[config.arenas[segments[1]]].host, onticord.servers[config.arenas[segments[1]]].port)
-					            client.currentServer = config.arenas[segments[1]];
+                                client.currentServer = config.arenas[segments[1]];
                             }
-                        }
-                        else {
-                            
+                        } else {
+
                         }
                         cancelDefault()
                     } else if (segments[0] === '/leave') {
                         if (client.currentServer !== "lobby") {
                             onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
-					        client.currentServer = config.lobby;
+                            client.currentServer = config.lobby;
                         } else {
                             announce("You're already in the lobby.", client)
                         }
