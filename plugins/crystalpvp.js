@@ -7,11 +7,165 @@ const https = require('https');
 var pluginFolder = path.join(__dirname, "CrystalPVP");
 var configFile = path.join(pluginFolder, "config.json");
 
+module.exports = (onticord) => {
+    init(function(err, config) {
+        if (err) {
+            console.err(err);
+        } else {
+            //config loaded
 
-function log(message) {
-    console.log(`[CrystalPVP] ${message}`);
+            var connection = mysql.createConnection(config.mysql);
+            connection.query("CREATE TABLE IF NOT EXISTS `cpvp_teams` (`ID` INT(6) AUTO_INCREMENT NOT NULL, `uuid` VARCHAR(36) NOT NULL, `team_name` TEXT NOT NULL, `team_rank` TEXT NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
+                if (err) {
+                    console.error(err);
+                } else {
+                    log("Successfully ran query for MySQL cpvp_teams database");
+                }
+            });
+            connection.query("CREATE TABLE IF NOT EXISTS `cpvp_kills` (`ID` INT(6) AUTO_INCREMENT NOT NULL, `killer_uuid` VARCHAR(36) NOT NULL, `victim_uuid` VARCHAR(36) NOT NULL, `weapon` TEXT NOT NULL, `timestamp` bigint(16) NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
+                if (err) {
+                    console.error(err);
+                } else {
+                    log("Successfully ran query for MySQL cpvp_kills database");
+                }
+            });
+
+            onticord.on('serverPacket', (meta, data, client, cancelDefault) => {
+                if (meta.name == "chat") {
+                    var chat = JSON.parse(JSON.stringify(data.message));
+                    chat = JSON.parse(chat); // double parse, fix this
+                    if (chat.extra && chat.extra[0] && chat.extra[0].extra) {
+                        var deathMessage = chat.extra[0].extra;
+                        /*
+                        console.log("extra0", deathMessage[0]);
+                        console.log("extra1", deathMessage[1]);
+                        console.log("extra2", deathMessage[2]);
+                        console.log("extra3", deathMessage[3]);
+                        */
+                        if (deathMessage[3].text.substring(1, 20) == "with an End Crystal") {
+                            var victim;
+                            var killer;
+                            var weapon;
+                            //handle crystal kills
+                            weapon = "End Crystal";
+                            if (deathMessage[2]) {
+                                if (deathMessage[2].extra[0].text) {
+                                    victim = deathMessage[2].extra[0].text
+                                }
+                            }
+                            if (deathMessage[1].text) {
+                                killer = deathMessage[1].text.slice(0, -8);
+                            }
+                            if (config.plan_support == true) {
+                                if (client.username == victim) { //prevents logging the kill n number of times where n is the total players connected
+                                    console.log(killer_uuid, victim_uuid);
+                                    logDeath(killer, victim, weapon, connection);
+                                }
+                            }
+                        }
+                    }
+
+                }
+            })
+
+            onticord.on('clientPacket', (meta, data, client, cancelDefault) => {
+                if (meta.name === 'chat') {
+                    if (data.message.indexOf('/') !== 0) return
+                    const segments = data.message.split(' ')
+                    if (segments[0] === '/arena') {
+                        if (segments[1]) {
+                            if (config.arenas[segments[1]]) {
+                                onticord.sendClient(client, onticord.servers[config.arenas[segments[1]]].host, onticord.servers[config.arenas[segments[1]]].port)
+                                client.currentServer = config.arenas[segments[1]];
+                                client.currentArena = segments[1];
+                            } else {
+                                announce("Could not find that arena.", client);
+                            }
+                        } else {
+                            if (client.currentArena) {
+                                console.log(client.currentArena);
+                                announce("You are currently connected to arena "+client.currentArena, client);
+                            } else {
+                                announce("Usage: /arena {number}", client);
+                            }
+                            
+                        }
+                        cancelDefault()
+                    } else if (segments[0] === '/leave') {
+                        if (client.currentServer !== "lobby") {
+                            onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
+                            client.currentServer = config.lobby;
+                            client.currentArena = undefined;
+                        } else {
+                            announce("You're already in the lobby.", client)
+                        }
+                        cancelDefault();
+                    } else if (segments[0] === '/team') {
+                        if (segments[1] === "create") {
+                            cancelDefault();
+                        } else if (segments[1] === "disband"){
+                            
+                            cancelDefault();
+                        }else if (segments[1] === "accept"){
+
+                            cancelDefault();
+                        } else if (segments[1] === "leave"){
+
+                            cancelDefault();
+                        } else {
+                            client.write('chat', {
+                                'message': JSON.stringify({
+                                    'text': '',
+                                    'extra': [
+                                        {
+                                            'text': 'CrystalPVP Teams Help\n',
+                                            'color': 'yellow'
+                                        },
+                                        {
+                                            'text': `/team create: `,
+                                            'color': 'blue'
+                                        },
+                                        {
+                                            'text': `Creates a team with the supplied team name\n`,
+                                            'color': 'white'
+                                        },
+                                        {
+                                            'text': `/team disband: `,
+                                            'color': 'blue'
+                                        },
+                                        {
+                                            'text': `Disbands your current team (owner only)\n`,
+                                            'color': 'white'
+                                        },
+                                        {
+                                            'text': `/team accept: `,
+                                            'color': 'blue'
+                                        },
+                                        {
+                                            'text': `Accepts a pending invite from the supplied team name\n`,
+                                            'color': 'white'
+                                        },
+                                        {
+                                            'text': `/team leave: `,
+                                            'color': 'blue'
+                                        },
+                                        {
+                                            'text': `Leaves your current team\n`,
+                                            'color': 'white'
+                                        },
+                                    ]
+                                })
+                            })
+                            cancelDefault();
+                        }
+                        
+                    }
+                }
+            })
+
+        }
+    })
 }
-
 var defaults = {
     "mysql": {
         "host": "mysql.ip.here",
@@ -26,6 +180,10 @@ var defaults = {
         1: "arena1",
         2: "arena2"
     }
+}
+
+function log(message) {
+    console.log(`[CrystalPVP] ${message}`);
 }
 
 function createConfig(callback) {
@@ -177,95 +335,21 @@ function logDeath(killer, victim, weapon, database) {
     })
 
 }
+function createTeam(name, owner, database) {
 
+}
+function disbandTeam(name, database) {
+    
+}
+function acceptInvite(name, database) {
 
-module.exports = (onticord) => {
-    init(function(err, config) {
-        if (err) {
-            console.err(err);
-        } else {
-            //config loaded
+}
+function leaveTeam(name, database) {
 
-            var connection = mysql.createConnection(config.mysql);
-            connection.query("CREATE TABLE IF NOT EXISTS `cpvp_teams` (`ID` INT(6) AUTO_INCREMENT NOT NULL, `uuid` VARCHAR(36) NOT NULL, `team_name` TEXT NOT NULL, `team_rank` TEXT NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
-                if (err) {
-                    console.error(err);
-                } else {
-                    log("Successfully ran query for MySQL cpvp_teams database");
-                }
-            });
-            connection.query("CREATE TABLE IF NOT EXISTS `cpvp_kills` (`ID` INT(6) AUTO_INCREMENT NOT NULL, `killer_uuid` VARCHAR(36) NOT NULL, `victim_uuid` VARCHAR(36) NOT NULL, `weapon` TEXT NOT NULL, `timestamp` bigint(16) NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
-                if (err) {
-                    console.error(err);
-                } else {
-                    log("Successfully ran query for MySQL cpvp_kills database");
-                }
-            });
+}
+function startDuel(name, opponent, database) {
 
-            onticord.on('serverPacket', (meta, data, client, cancelDefault) => {
-                if (meta.name == "chat") {
-                    var chat = JSON.parse(JSON.stringify(data.message));
-                    chat = JSON.parse(chat); // double parse, fix this
-                    if (chat.extra && chat.extra[0] && chat.extra[0].extra) {
-                        var deathMessage = chat.extra[0].extra;
-                        /*
-                        console.log("extra0", deathMessage[0]);
-                        console.log("extra1", deathMessage[1]);
-                        console.log("extra2", deathMessage[2]);
-                        console.log("extra3", deathMessage[3]);
-                        */
-                        if (deathMessage[3].text.substring(1, 20) == "with an End Crystal") {
-                            var victim;
-                            var killer;
-                            var weapon;
-                            //handle crystal kills
-                            weapon = "End Crystal";
-                            if (deathMessage[2]) {
-                                if (deathMessage[2].extra[0].text) {
-                                    victim = deathMessage[2].extra[0].text
-                                }
-                            }
-                            if (deathMessage[1].text) {
-                                killer = deathMessage[1].text.slice(0, -8);
-                            }
-                            if (config.plan_support == true) {
-                                if (client.username == victim) { //prevents logging the kill n number of times where n is the total players connected
-                                    console.log(killer_uuid, victim_uuid);
-                                    logDeath(killer, victim, weapon, connection);
-                                }
-                            }
-                        }
-                    }
+}
+function acceptDuel(name, opponent, database) {
 
-                }
-            })
-
-            onticord.on('clientPacket', (meta, data, client, cancelDefault) => {
-                if (meta.name === 'chat') {
-                    if (data.message.indexOf('/') !== 0) return
-                    const segments = data.message.split(' ')
-                    if (segments[0] === '/arena') {
-                        if (segments[1]) {
-                            if (config.arenas[segments[1]]) {
-                                onticord.sendClient(client, onticord.servers[config.arenas[segments[1]]].host, onticord.servers[config.arenas[segments[1]]].port)
-                                client.currentServer = config.arenas[segments[1]];
-                            }
-                        } else {
-
-                        }
-                        cancelDefault()
-                    } else if (segments[0] === '/leave') {
-                        if (client.currentServer !== "lobby") {
-                            onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
-                            client.currentServer = config.lobby;
-                        } else {
-                            announce("You're already in the lobby.", client)
-                        }
-                        cancelDefault();
-                    }
-                }
-            })
-
-        }
-    })
 }

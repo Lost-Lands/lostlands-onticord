@@ -1,5 +1,5 @@
 {
-	"defaultServer": "lobby",
+    "defaultServer": "arena1",
     "lobby": {
         "host": "localhost",
         "port": 25566
