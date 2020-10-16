@@ -2,8 +2,6 @@ const fs = require('fs');
 const path = require('path');
 var mysql = require('mysql');
 const https = require('https');
-const { ADDRGETNETWORKPARAMS } = require('dns');
-
 
 var pluginFolder = path.join(__dirname, "CrystalPVP");
 var configFile = path.join(pluginFolder, "config.json");
@@ -106,11 +104,11 @@ module.exports = (onticord) => {
                         } else {
                             if (client.currentArena) {
                                 console.log(client.currentArena);
-                                announce("You are currently connected to arena "+client.currentArena, client);
+                                announce("You are currently connected to arena " + client.currentArena, client);
                             } else {
                                 announce("Usage: /arena {number}", client);
                             }
-                            
+
                         }
                         cancelDefault()
                     } else if (segments[0] === '/leave') {
@@ -118,23 +116,22 @@ module.exports = (onticord) => {
                         cancelDefault();
                     } else if (segments[0] === '/team') {
                         if (segments[1] === "create") {
-                            createTeam(segments[2], client.username, connection,client);
+                            createTeam(segments[2], client.username, connection, client);
                             cancelDefault();
-                        } else if (segments[1] === "disband"){
-                            
-                            cancelDefault();
-                        }else if (segments[1] === "accept"){
+                        } else if (segments[1] === "disband") {
 
                             cancelDefault();
-                        } else if (segments[1] === "leave"){
+                        } else if (segments[1] === "accept") {
+
+                            cancelDefault();
+                        } else if (segments[1] === "leave") {
 
                             cancelDefault();
                         } else {
                             client.write('chat', {
                                 'message': JSON.stringify({
                                     'text': '',
-                                    'extra': [
-                                        {
+                                    'extra': [{
                                             'text': 'CrystalPVP Teams Help\n',
                                             'color': 'yellow'
                                         },
@@ -175,7 +172,7 @@ module.exports = (onticord) => {
                             })
                             cancelDefault();
                         }
-                        
+
                     } else if (segments[0] === '/duel') {
                         if (segments[1]) {
                             if (segments[1] == "accept") {
@@ -185,7 +182,7 @@ module.exports = (onticord) => {
                                     announce("Usage: /duel accept {username}", client);
                                 }
                             } else {
-                                startDuel(segments[1], connection, client, onticord); 
+                                startDuel(segments[1], connection, client, onticord);
                             }
                         } else {
                             announce("Usage: /duel {username}", client);
@@ -322,7 +319,7 @@ function announce(msg, client) {
 }
 
 function getUUID(username, callback) {
-    https.get('https://api.mojang.com/users/profiles/minecraft/'+username, (resp) => {
+    https.get('https://api.mojang.com/users/profiles/minecraft/' + username, (resp) => {
         let data = '';
         // A chunk of data has been recieved.
         resp.on('data', (chunk) => {
@@ -333,7 +330,7 @@ function getUUID(username, callback) {
             if (data.length > 0) {
                 callback(null, JSON.parse(data).id);
             }
-            
+
         });
     }).on("error", (err) => {
         callback(err);
@@ -341,11 +338,12 @@ function getUUID(username, callback) {
 }
 
 function uuidDashes(uuid) {
-    return uuid.slice(0,8)+"-"+uuid.slice(8,12)+"-"+uuid.slice(12,16)+"-"+uuid.slice(16,20)+"-"+uuid.slice(20,32)
+    return uuid.slice(0, 8) + "-" + uuid.slice(8, 12) + "-" + uuid.slice(12, 16) + "-" + uuid.slice(16, 20) + "-" + uuid.slice(20, 32)
 }
+
 function logDeath(killer, victim, weapon, database) {
     var timestamp = Date.now();
-   log(`${killer} killed ${victim} using ${weapon}`)
+    log(`${killer} killed ${victim} using ${weapon}`)
 
     getUUID(killer, function(err, uuid) {
         if (err) {
@@ -358,9 +356,7 @@ function logDeath(killer, victim, weapon, database) {
                 } else {
                     var victim_uuid = uuidDashes(uuid)
 
-                    //log death
-                    console.log(killer, killer_uuid);
-                    console.log(victim, victim_uuid);                    
+                    //log death                 
                     database.query(`INSERT INTO cpvp_kills (killer_uuid, victim_uuid, weapon, timestamp) VALUES ("${killer_uuid}", "${victim_uuid}", "${weapon}", "${timestamp}")`, function(err, result) {
                         if (err) {
                             console.error(err);
@@ -368,13 +364,14 @@ function logDeath(killer, victim, weapon, database) {
                             log(`Logged kill for ${killer} on ${victim} using ${weapon} at ${timestamp}`);
                         }
                     })
-                    
+
                 }
             })
         }
     })
 
 }
+
 function checkKill(killer, victim, database, config, onticord, a = arenas) {
     //checks if player was in an event such as a duel or teams
 
@@ -392,13 +389,13 @@ function checkKill(killer, victim, database, config, onticord, a = arenas) {
                     } else {
 
                         announce(`You won the duel with ${victim.username}!`, killer);
-                        announce(`You lost the duel with ${killer.username}.`, victim);  
+                        announce(`You lost the duel with ${killer.username}.`, victim);
                         a.set(killer.event.arena, false);
                         log(`Set arena ${killer.event.arena} to open.`)
                     }
                 })
             }
-            
+
         }
     } else {
         // not in event, disregard
@@ -427,15 +424,14 @@ function createTeam(name, owner, database, client) {
                             } else {
                                 if (result.length > 0) {
                                     announce("Team already exists", client);
-                                }
-                                else {
+                                } else {
                                     database.query(`INSERT INTO cpvp_teams (uuid, team_name, team_rank) VALUES ("${uuid}", "${name}", "owner")`, function(err, result) {
                                         if (err) {
                                             announce("Failed to create team, please report this issue in Discord.", client);
                                             console.error(err);
                                         } else {
                                             log(`Created new team with name "${name}" for owner "${owner}"`);
-                                            announce("Successfully created team named "+name, client);
+                                            announce("Successfully created team named " + name, client);
                                         }
                                     });
                                 }
@@ -445,11 +441,11 @@ function createTeam(name, owner, database, client) {
                 }
             });
         });
-    }
-    else {
+    } else {
         announce("Team names cannot be longer than 16 characters!", client);
     }
 }
+
 function teamRank(name, rank, database, callback) {
     database.query(`SELECT * FROM cpvp_teams WHERE team_name like "${name}" AND team_rank LIKE "${rank}"`, function(err, result) {
         if (err) {
@@ -460,16 +456,19 @@ function teamRank(name, rank, database, callback) {
         }
     });
 }
+
 function teamInfo(name, database, client) {
 
 }
 
 function disbandTeam(name, database, client) {
-    
+
 }
+
 function acceptInvite(name, database, client) {
 
 }
+
 function leaveTeam(name, database, client) {
 
 }
@@ -486,7 +485,7 @@ function startDuel(opponent, database, client, onticord) {
             opponent = onticord.players.get(opponent);
             if (opponent) {
                 duels.set(client.username, opponent.username);
-                setTimeout(function(){ 
+                setTimeout(function() {
                     if (duels.get(client.username)) {
                         announce(`Your duel request to ${duels.get(client.username)} has expired.`, client);
                         duels.delete(client.username);
@@ -501,6 +500,7 @@ function startDuel(opponent, database, client, onticord) {
     }
 
 }
+
 function acceptDuel(opponent, database, client, config, onticord) {
     if (duels.get(opponent)) {
         if (onticord.players.get(opponent)) { //check if player is online
@@ -530,7 +530,7 @@ function acceptDuel(opponent, database, client, config, onticord) {
                                 arena
                             };
 
-                            client.event = event;                               
+                            client.event = event;
                             opponent.event = event;
                             joinArena(arena, client, config, onticord);
                             joinArena(arena, opponent, config, onticord);
@@ -556,11 +556,12 @@ function acceptDuel(opponent, database, client, config, onticord) {
 }
 //Arena handling
 function populateArenas(array) {
-    for(id in array) {
+    for (id in array) {
         arenas.set(id, false);
     }
     return arenas;
 }
+
 function openArenas(a = arenas) {
     var result = []
     a.forEach(function(arena, id) {
@@ -570,6 +571,7 @@ function openArenas(a = arenas) {
     })
     return result;
 }
+
 function joinArena(arena, client, config, onticord) {
     var server = config.arenas[arena];
 
@@ -582,6 +584,7 @@ function joinArena(arena, client, config, onticord) {
         announce(`Unable to send you to arena ${arena}. Please report on Discord.`, client);
     }
 }
+
 function leaveArena(client, config, onticord) {
     if (client.currentServer !== "lobby") {
         onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
