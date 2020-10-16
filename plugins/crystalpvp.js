@@ -383,8 +383,18 @@ function checkKill(killer, victim, database, config, onticord) {
     if (killer.event.type && victim.event.type && killer.event.type === victim.event.type) {
         if (victim.event.type == "duel") {
             //killer wins
-            announce(`You won the duel with ${victim.username}!`, killer);
-            announce(`You lost the duel with ${killer.username}.`, victim);
+            if (killer.event.host === killer.uuid) { //prevents logging duel results twice
+                database.query(`UPDATE cpvp_duels SET active=false, winner="${killer.uuid}" WHERE player1 = "${killer.event.host}";`, function(err, result) {
+                    if (err) {
+                        announce(`Failed saving duel stats with ${victim.username}, please report on Discord.`, killer);
+                        announce(`Failed saving duel stats with ${killer.username}, please report on Discord.`, victim);
+                    } else {
+                        announce(`You won the duel with ${victim.username}!`, killer);
+                        announce(`You lost the duel with ${killer.username}.`, victim);  
+                    }
+                })
+            }
+            
         }
     } else {
         // not in event, disregard
@@ -516,6 +526,7 @@ function acceptDuel(opponent, database, client, config, onticord) {
 
                             var event = {
                                 type: "duel",
+                                host: opponent.uuid,
                                 arena
                             };
 
@@ -523,6 +534,8 @@ function acceptDuel(opponent, database, client, config, onticord) {
                             opponent.event = event;
                             joinArena(arena, client, config, onticord);
                             joinArena(arena, opponent, config, onticord);
+                            announce(`Taking you to arena ${arena}`, client);
+                            announce(`Taking you to arena ${arena}`, opponent);
                         }
                     });
                     //send to open arena server
