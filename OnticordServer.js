@@ -12,9 +12,6 @@ var whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, "whitelist.json"
 module.exports = class OnticordServer extends EventEmitter {
 	constructor(config) {
 
-		
-
-
 		if (config.whitelist == true) {
 			console.log("[Onticord] Whitelist Enabled");
 		}
@@ -54,8 +51,11 @@ module.exports = class OnticordServer extends EventEmitter {
 			'maxPlayers': config.maxPlayers
 		})
 
+		this.players = new Map();
 
 		this.core.on('login', (client) => {
+			//add player to map on login
+			this.players.set(client.uuid, client);
 
 			if (config.whitelist == true) {
 				if (whitelist.uuid.indexOf(client.uuid) > -1){
@@ -71,7 +71,11 @@ module.exports = class OnticordServer extends EventEmitter {
 			else {
 				console.log('[+] ' + client.username + ' (' + client.uuid + ') (' + client.socket.remoteAddress + ')')
 			}
-		})
+			client.on('end', () => {
+				//remove player from map on leave
+				this.players.delete(client.uuid);
+			});
+		});
 
 		this.config = config
 

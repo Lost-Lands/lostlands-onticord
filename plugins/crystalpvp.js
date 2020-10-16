@@ -102,6 +102,7 @@ module.exports = (onticord) => {
                         cancelDefault();
                     } else if (segments[0] === '/team') {
                         if (segments[1] === "create") {
+                            createTeam(segments[2], client.username, connection,client);
                             cancelDefault();
                         } else if (segments[1] === "disband"){
                             
@@ -335,21 +336,65 @@ function logDeath(killer, victim, weapon, database) {
     })
 
 }
-function createTeam(name, owner, database) {
+function createTeam(name, owner, database, client) {
+
+    if (name.length < 16) {
+        getUUID(owner, function(err, uuid) {
+            //check if user owns another team
+            database.query(`SELECT * FROM cpvp_teams WHERE UUID like "${uuid}" AND team_rank LIKE "owner"`, function(err, result) {
+                if (err) {
+                    announce("Failed to create team, please report this issue in Discord.", client);
+                    console.error(err);
+                } else {
+                    if (result.length > 0) {
+                        announce("You can only own one team!", client);
+                    } else {
+                        database.query(`SELECT * FROM cpvp_teams WHERE team_name like "${name}" AND team_rank LIKE "owner"`, function(err, result) {
+                            if (err) {
+                                announce("Failed to create team, please report this issue in Discord.", client);
+                                console.error(err);
+                            } else {
+                                if (result.length > 0) {
+                                    announce("Team already exists", client);
+                                }
+                                else {
+                                    database.query(`INSERT INTO cpvp_teams (uuid, team_name, team_rank) VALUES ("${uuid}", "${name}", "owner")`, function(err, result) {
+                                        if (err) {
+                                            announce("Failed to create team, please report this issue in Discord.", client);
+                                            console.error(err);
+                                        } else {
+                                            log(`Created new team with name "${name}" for owner "${owner}"`);
+                                            announce("Successfully created team named "+name, client);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        });
+    }
+    else {
+        announce("Team names cannot be longer than 16 characters!", client);
+    }
+}
+function teamInfo(name, database, client) {
 
 }
-function disbandTeam(name, database) {
+
+function disbandTeam(name, database, client) {
     
 }
-function acceptInvite(name, database) {
+function acceptInvite(name, database, client) {
 
 }
-function leaveTeam(name, database) {
+function leaveTeam(name, database, client) {
 
 }
-function startDuel(name, opponent, database) {
+function startDuel(name, opponent, database, client) {
 
 }
-function acceptDuel(name, opponent, database) {
+function acceptDuel(name, opponent, database, client) {
 
 }
