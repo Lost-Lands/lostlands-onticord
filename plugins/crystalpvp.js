@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 var mysql = require('mysql');
 const https = require('https');
+const { ADDRGETNETWORKPARAMS } = require('dns');
 
 
 var pluginFolder = path.join(__dirname, "CrystalPVP");
@@ -13,22 +14,31 @@ module.exports = (onticord) => {
             console.err(err);
         } else {
             //config loaded
-
             var connection = mysql.createConnection(config.mysql);
             connection.query("CREATE TABLE IF NOT EXISTS `cpvp_teams` (`ID` INT(6) AUTO_INCREMENT NOT NULL, `uuid` VARCHAR(36) NOT NULL, `team_name` TEXT NOT NULL, `team_rank` TEXT NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
                 if (err) {
-                    console.error(err);
+                    throw err;
                 } else {
                     log("Successfully ran query for MySQL cpvp_teams database");
                 }
             });
             connection.query("CREATE TABLE IF NOT EXISTS `cpvp_kills` (`ID` INT(6) AUTO_INCREMENT NOT NULL, `killer_uuid` VARCHAR(36) NOT NULL, `victim_uuid` VARCHAR(36) NOT NULL, `weapon` TEXT NOT NULL, `timestamp` bigint(16) NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
                 if (err) {
-                    console.error(err);
+                    throw err;
                 } else {
                     log("Successfully ran query for MySQL cpvp_kills database");
                 }
             });
+
+            connection.query("CREATE TABLE IF NOT EXISTS `cpvp_duels` ( `ID` INT(6) NOT NULL AUTO_INCREMENT , `player1` VARCHAR(36) NOT NULL , `player2` VARCHAR(36) NOT NULL , `active` BOOLEAN NOT NULL , `arena` TEXT NOT NULL , `winner` VARCHAR(36) NOT NULL , `timestamp` BIGINT(16) NOT NULL , PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
+                if (err) {
+                    throw err;
+                } else {
+                    log("Successfully ran query for MySQL cpvp_duels database");
+                }
+            });
+
+
 
             onticord.on('serverPacket', (meta, data, client, cancelDefault) => {
                 if (meta.name == "chat") {
@@ -58,13 +68,19 @@ module.exports = (onticord) => {
                             }
                             if (config.plan_support == true) {
                                 if (client.username == victim) { //prevents logging the kill n number of times where n is the total players connected
-                                    console.log(killer_uuid, victim_uuid);
                                     logDeath(killer, victim, weapon, connection);
                                 }
                             }
                         }
                     }
-
+                }
+                if (meta.name == "combat_event") {
+                    if (data.message) {
+                        var event = JSON.parse(data.message);
+                        var victim = event.with[0].text;
+                        var killer = event.with[1].text
+                        console.log(killer, victim);
+                    }
                 }
             })
 
@@ -160,6 +176,21 @@ module.exports = (onticord) => {
                             cancelDefault();
                         }
                         
+                    } else if (segments[0] === '/duel') {
+                        if (segments[1]) {
+                            if (segments[1] == "accept") {
+                                if (segments[2]) {
+                                    acceptDuel(segments[2], connection, client, config, onticord);
+                                } else {
+                                    announce("Usage: /duel accept {username}", client);
+                                }
+                            } else {
+                                startDuel(segments[1], connection, client, onticord); 
+                            }
+                        } else {
+                            announce("Usage: /duel {username}", client);
+                        }
+                        cancelDefault();
                     }
                 }
             })
@@ -232,6 +263,7 @@ function init(callback) {
                         if (err) {
                             callback(err);
                         } else {
+                            populateArenas(config.arenas)
                             callback(null, config);
                         }
                     })
@@ -249,6 +281,7 @@ function init(callback) {
                     if (err) {
                         callback(err);
                     } else {
+                        populateArenas(config.arenas)
                         callback(null, config);
                     }
                 })
@@ -293,7 +326,9 @@ function getUUID(username, callback) {
         });
         // The whole response has been received. Print out the result.
         resp.on('end', () => {
-            callback(null, JSON.parse(data).id);
+            if (data.length > 0) {
+                callback(null, JSON.parse(data).id);
+            }
             
         });
     }).on("error", (err) => {
@@ -336,6 +371,8 @@ function logDeath(killer, victim, weapon, database) {
     })
 
 }
+
+//team handling
 function createTeam(name, owner, database, client) {
 
     if (name.length < 16) {
@@ -349,7 +386,7 @@ function createTeam(name, owner, database, client) {
                     if (result.length > 0) {
                         announce("You can only own one team!", client);
                     } else {
-                        database.query(`SELECT * FROM cpvp_teams WHERE team_name like "${name}" AND team_rank LIKE "owner"`, function(err, result) {
+                        teamRank(name, "owner", database, function(err, result) {
                             if (err) {
                                 announce("Failed to create team, please report this issue in Discord.", client);
                                 console.error(err);
@@ -379,6 +416,16 @@ function createTeam(name, owner, database, client) {
         announce("Team names cannot be longer than 16 characters!", client);
     }
 }
+function teamRank(name, rank, database, callback) {
+    database.query(`SELECT * FROM cpvp_teams WHERE team_name like "${name}" AND team_rank LIKE "${rank}"`, function(err, result) {
+        if (err) {
+            callback(err);
+            console.error(err);
+        } else {
+            callback(null, result)
+        }
+    });
+}
 function teamInfo(name, database, client) {
 
 }
@@ -392,9 +439,101 @@ function acceptInvite(name, database, client) {
 function leaveTeam(name, database, client) {
 
 }
-function startDuel(name, opponent, database, client) {
+
+//Duel handling
+
+var duels = new Map();
+
+
+function startDuel(opponent, database, client, onticord) {
+
+    if (opponent.username == client.username) {
+        announce(`You can't duel yourself!`, client);
+    } else {
+        if (duels.get(client.username)) {
+            announce(`You currently have a pending duel with ${duels.get(client.username)}`, client);
+        } else {
+            opponent = onticord.players.get(opponent);
+            if (opponent) {
+                duels.set(client.username, opponent.username);
+                setTimeout(function(){ 
+                    if (duels.get(client.username)) {
+                        announce(`Your duel request to ${duels.get(client.username)} has expired.`, client);
+                        duels.delete(client.username);
+                    }
+                }, 30000);
+                announce(`Duel request sent to ${opponent.username}`, client);
+                announce(`${client.username} wants to duel! Type "/duel accept ${client.username}" to accept the duel.`, opponent);
+            } else {
+                announce("Could not find that player.", client);
+            }
+        }
+    }
 
 }
-function acceptDuel(name, opponent, database, client) {
+function acceptDuel(opponent, database, client, config, onticord) {
+    if (duels.get(opponent)) {
+        if (onticord.players.get(opponent)) { //check if player is online
+            if (duels.get(opponent) == client.username) {
+                //start duel
+                opponent = onticord.players.get(opponent)
+                announce(`Starting duel with ${opponent.username}...`, client);
+                announce(`Starting duel with ${client.username}...`, opponent);
 
+                //remove duel request
+                duels.delete(opponent.username);
+                //log duel in database
+                var timestamp = Date.now();
+                if (openArenas()[Object.keys(openArenas())[0]]) {
+                    var arena = openArenas()[Object.keys(openArenas())[0]]
+                    console.log(arena);
+                    database.query(`INSERT INTO cpvp_duels  (player1, player2, active, arena, winner, timestamp) VALUES ("${opponent.uuid}", "${client.uuid}", true, "${arena}", "none", "${timestamp}")`, function(err, result) {
+                        if (err) {
+                            announce("Failed to initiate duel. Please report this issue in Discord", client);
+                            console.error(err);
+                        } else {
+                            arenas.set(arena, true);
+                            joinArena(arena, client, config, onticord);
+                            joinArena(arena, opponent, config, onticord);
+                        }
+                    });
+                    //send to open arena server
+                } else {
+                    //No open arenas
+                    announce(`There are no open areans at the moment. Please try again later.`, client);
+                    announce(`There are no open areans at the moment. Please try again later.`, opponent);
+                }
+            } else {
+                announce(`You do not have a pending duel with that player.`, client);
+            }
+        } else {
+            announce("That player is offline.", client)
+        }
+    } else {
+        announce("Could not find a duel with that player.", client)
+    }
+}
+//Arena handling
+var arenas = new Map();
+function populateArenas(array) {
+    for(id in array) {
+        arenas.set(id, false);
+    }
+    return arenas;
+}
+function openArenas(a = arenas) {
+    var result = []
+    a.forEach(function(arena, id) {
+        if (arena === false) {
+            result.push(id, arena);
+        }
+    })
+    return result;
+}
+function joinArena(arena, client, config, onticord) {
+    var server = config.arenas[arena];
+    log(`Sending ${client.username} to ${arena}`);
+    onticord.sendClient(client, onticord.servers[server].host, onticord.servers[server].port)
+    client.currentServer = server;
+    client.currentArena = arena;
 }
