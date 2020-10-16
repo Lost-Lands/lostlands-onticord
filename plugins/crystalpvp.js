@@ -75,13 +75,16 @@ module.exports = (onticord) => {
                         }
                     }
                 }
-                if (meta.name == "combat_event") {
+                if (meta.name == "combat_event") { //handle PVP events
                     if (data.message) {
-                        var event = JSON.parse(data.message);
-                        var victim = event.with[0].text;
-                        var killer = event.with[1].text
-                        if (client.username == victim) { //prevents logging the kill n number of times where n is the total players connected
-                            checkKill(killer, victim, connection, config, onticord);
+                        if (data.message.translate == "death.attack.player") {
+                            console.log(data.message);
+                            var event = JSON.parse(data.message);
+                            var victim = event.with[0].text;
+                            var killer = event.with[1].text
+                            if (client.username == victim) { //prevents logging the kill n number of times where n is the total players connected
+                                checkKill(killer, victim, connection, config, onticord);
+                            }
                         }
                     }
                 }
@@ -111,13 +114,7 @@ module.exports = (onticord) => {
                         }
                         cancelDefault()
                     } else if (segments[0] === '/leave') {
-                        if (client.currentServer !== "lobby") {
-                            onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
-                            client.currentServer = config.lobby;
-                            client.currentArena = undefined;
-                        } else {
-                            announce("You're already in the lobby.", client)
-                        }
+                        leaveArena(client, config, onticord);
                         cancelDefault();
                     } else if (segments[0] === '/team') {
                         if (segments[1] === "create") {
@@ -216,6 +213,10 @@ var defaults = {
         2: "arena2"
     }
 }
+
+//Setup maps
+var arenas = new Map();
+var duels = new Map();
 
 function log(message) {
     console.log(`[CrystalPVP] ${message}`);
@@ -374,13 +375,13 @@ function logDeath(killer, victim, weapon, database) {
     })
 
 }
-function checkKill(killer, victim, database, config, onticord) {
+function checkKill(killer, victim, database, config, onticord, a = arenas) {
     //checks if player was in an event such as a duel or teams
 
     killer = onticord.players.get(killer);
     victim = onticord.players.get(victim);
 
-    if (killer.event.type && victim.event.type && killer.event.type === victim.event.type) {
+    if (killer.event && victim.event && killer.event.type && victim.event.type && killer.event.type === victim.event.type) {
         if (victim.event.type == "duel") {
             //killer wins
             if (killer.event.host === killer.uuid) { //prevents logging duel results twice
@@ -389,8 +390,11 @@ function checkKill(killer, victim, database, config, onticord) {
                         announce(`Failed saving duel stats with ${victim.username}, please report on Discord.`, killer);
                         announce(`Failed saving duel stats with ${killer.username}, please report on Discord.`, victim);
                     } else {
+
                         announce(`You won the duel with ${victim.username}!`, killer);
                         announce(`You lost the duel with ${killer.username}.`, victim);  
+                        a.set(killer.event.arena, false);
+                        log(`Set arena ${killer.event.arena} to open.`)
                     }
                 })
             }
@@ -471,10 +475,6 @@ function leaveTeam(name, database, client) {
 }
 
 //Duel handling
-
-var duels = new Map();
-
-
 function startDuel(opponent, database, client, onticord) {
 
     if (opponent.username == client.username) {
@@ -555,7 +555,6 @@ function acceptDuel(opponent, database, client, config, onticord) {
     }
 }
 //Arena handling
-var arenas = new Map();
 function populateArenas(array) {
     for(id in array) {
         arenas.set(id, false);
@@ -573,8 +572,22 @@ function openArenas(a = arenas) {
 }
 function joinArena(arena, client, config, onticord) {
     var server = config.arenas[arena];
-    log(`Sending ${client.username} to ${arena}`);
-    onticord.sendClient(client, onticord.servers[server].host, onticord.servers[server].port)
-    client.currentServer = server;
-    client.currentArena = arena;
+
+    if (server) {
+        log(`Sending ${client.username} to arena ${arena}`);
+        onticord.sendClient(client, onticord.servers[server].host, onticord.servers[server].port)
+        client.currentServer = server;
+        client.currentArena = arena;
+    } else {
+        announce(`Unable to send you to arena ${arena}. Please report on Discord.`, client);
+    }
+}
+function leaveArena(client, config, onticord) {
+    if (client.currentServer !== "lobby") {
+        onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
+        client.currentServer = config.lobby;
+        client.currentArena = undefined;
+    } else {
+        announce("You're already in the lobby.", client)
+    }
 }
