@@ -69,6 +69,7 @@ module.exports = (onticord) => {
                             if (config.plan_support == true) {
                                 if (client.username == victim) { //prevents logging the kill n number of times where n is the total players connected
                                     logDeath(killer, victim, weapon, connection);
+                                    checkKill(killer, victim, connection, config, onticord);
                                 }
                             }
                         }
@@ -79,7 +80,9 @@ module.exports = (onticord) => {
                         var event = JSON.parse(data.message);
                         var victim = event.with[0].text;
                         var killer = event.with[1].text
-                        console.log(killer, victim);
+                        if (client.username == victim) { //prevents logging the kill n number of times where n is the total players connected
+                            checkKill(killer, victim, connection, config, onticord);
+                        }
                     }
                 }
             })
@@ -371,6 +374,23 @@ function logDeath(killer, victim, weapon, database) {
     })
 
 }
+function checkKill(killer, victim, database, config, onticord) {
+    //checks if player was in an event such as a duel or teams
+
+    killer = onticord.players.get(killer);
+    victim = onticord.players.get(victim);
+
+    if (killer.event.type && victim.event.type && killer.event.type === victim.event.type) {
+        if (victim.event.type == "duel") {
+            //killer wins
+            announce(`You won the duel with ${victim.username}!`, killer);
+            announce(`You lost the duel with ${killer.username}.`, victim);
+        }
+    } else {
+        // not in event, disregard
+    }
+
+}
 
 //team handling
 function createTeam(name, owner, database, client) {
@@ -493,6 +513,14 @@ function acceptDuel(opponent, database, client, config, onticord) {
                             console.error(err);
                         } else {
                             arenas.set(arena, true);
+
+                            var event = {
+                                type: "duel",
+                                arena
+                            };
+
+                            client.event = event;                               
+                            opponent.event = event;
                             joinArena(arena, client, config, onticord);
                             joinArena(arena, opponent, config, onticord);
                         }
