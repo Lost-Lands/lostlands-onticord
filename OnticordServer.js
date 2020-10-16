@@ -55,7 +55,7 @@ module.exports = class OnticordServer extends EventEmitter {
 
 		this.core.on('login', (client) => {
 			//add player to map on login
-			this.players.set(client.uuid, client);
+			this.players.set(client.username, client);
 
 			if (config.whitelist == true) {
 				if (whitelist.uuid.indexOf(client.uuid) > -1){
@@ -73,7 +73,7 @@ module.exports = class OnticordServer extends EventEmitter {
 			}
 			client.on('end', () => {
 				//remove player from map on leave
-				this.players.delete(client.uuid);
+				this.players.delete(client.username);
 			});
 		});
 
