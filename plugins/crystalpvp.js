@@ -379,22 +379,23 @@ function checkKill(killer, victim, database, config, onticord, a = arenas) {
     victim = onticord.players.get(victim);
 
     if (killer.event && victim.event && killer.event.type && victim.event.type && killer.event.type === victim.event.type) {
+        console.log(killer.event);
         if (victim.event.type == "duel") {
             //killer wins
-            if (killer.event.host === killer.uuid) { //prevents logging duel results twice
-                database.query(`UPDATE cpvp_duels SET active=false, winner="${killer.uuid}" WHERE player1 = "${killer.event.host}";`, function(err, result) {
-                    if (err) {
-                        announce(`Failed saving duel stats with ${victim.username}, please report on Discord.`, killer);
-                        announce(`Failed saving duel stats with ${killer.username}, please report on Discord.`, victim);
-                    } else {
+            database.query(`UPDATE cpvp_duels SET active=false, winner="${killer.uuid}" WHERE player1 = "${killer.event.host}";`, function(err, result) {
+                if (err) {
+                    announce(`Failed saving duel stats with ${victim.username}, please report on Discord.`, killer);
+                    announce(`Failed saving duel stats with ${killer.username}, please report on Discord.`, victim);
+                } else {
 
-                        announce(`You won the duel with ${victim.username}!`, killer);
-                        announce(`You lost the duel with ${killer.username}.`, victim);
-                        a.set(killer.event.arena, false);
-                        log(`Set arena ${killer.event.arena} to open.`)
-                    }
-                })
-            }
+                    announce(`You won the duel with ${victim.username}!`, killer);
+                    announce(`You lost the duel with ${killer.username}.`, victim);
+                    a.set(killer.event.arena, false);
+                    log(`Set arena ${killer.event.arena} to open.`)
+                    delete killer.event; //remove from event
+                    delete victim.event; //remove from event
+                }
+            })
 
         }
     } else {
