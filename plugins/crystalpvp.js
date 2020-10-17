@@ -127,6 +127,13 @@ module.exports = (onticord) => {
                         } else if (segments[1] === "leave") {
 
                             cancelDefault();
+                        } else if (segments[1] === "stats") {
+                            if (segments[2]) {
+                                //look up specific team
+                            }
+                            else {
+                                //check if the user belongs to a team and get its stats
+                            }
                         } else {
                             client.write('chat', {
                                 'message': JSON.stringify({
@@ -167,6 +174,14 @@ module.exports = (onticord) => {
                                             'text': `Leaves your current team\n`,
                                             'color': 'white'
                                         },
+                                        {
+                                            'text': `/team stats <team>: `,
+                                            'color': 'blue'
+                                        },
+                                        {
+                                            'text': `Look up stats of your or a supplied team\n`,
+                                            'color': 'white'
+                                        
                                     ]
                                 })
                             })
@@ -505,7 +520,6 @@ function startDuel(opponent, database, client, onticord) {
             }
         }
     }
-
 }
 
 function acceptDuel(opponent, database, client, config, onticord) {
