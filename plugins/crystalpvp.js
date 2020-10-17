@@ -379,7 +379,6 @@ function checkKill(killer, victim, database, config, onticord, a = arenas) {
     victim = onticord.players.get(victim);
 
     if (killer.event && victim.event && killer.event.type && victim.event.type && killer.event.type === victim.event.type) {
-        console.log(killer.event);
         if (victim.event.type == "duel") {
             //killer wins
             database.query(`UPDATE cpvp_duels SET active=false, winner="${killer.uuid}" WHERE player1 = "${killer.event.host}";`, function(err, result) {
@@ -394,6 +393,10 @@ function checkKill(killer, victim, database, config, onticord, a = arenas) {
                     log(`Set arena ${killer.event.arena} to open.`)
                     delete killer.event; //remove from event
                     delete victim.event; //remove from event
+                    setTimeout(function() {
+                        leaveArena(victim, config, onticord);
+                        leaveArena(killer, config, onticord);
+                    }, 5000);
                 }
             })
 
@@ -406,44 +409,47 @@ function checkKill(killer, victim, database, config, onticord, a = arenas) {
 
 //team handling
 function createTeam(name, owner, database, client) {
-
-    if (name.length < 16) {
-        getUUID(owner, function(err, uuid) {
-            //check if user owns another team
-            database.query(`SELECT * FROM cpvp_teams WHERE UUID like "${uuid}" AND team_rank LIKE "owner"`, function(err, result) {
-                if (err) {
-                    announce("Failed to create team, please report this issue in Discord.", client);
-                    console.error(err);
-                } else {
-                    if (result.length > 0) {
-                        announce("You can only own one team!", client);
+    if (name) {
+        if (name.length < 16) {
+            getUUID(owner, function(err, uuid) {
+                //check if user owns another team
+                database.query(`SELECT * FROM cpvp_teams WHERE UUID like "${uuid}" AND team_rank LIKE "owner"`, function(err, result) {
+                    if (err) {
+                        announce("Failed to create team, please report this issue in Discord.", client);
+                        console.error(err);
                     } else {
-                        teamRank(name, "owner", database, function(err, result) {
-                            if (err) {
-                                announce("Failed to create team, please report this issue in Discord.", client);
-                                console.error(err);
-                            } else {
-                                if (result.length > 0) {
-                                    announce("Team already exists", client);
+                        if (result.length > 0) {
+                            announce("You can only own one team!", client);
+                        } else {
+                            teamRank(name, "owner", database, function(err, result) {
+                                if (err) {
+                                    announce("Failed to create team, please report this issue in Discord.", client);
+                                    console.error(err);
                                 } else {
-                                    database.query(`INSERT INTO cpvp_teams (uuid, team_name, team_rank) VALUES ("${uuid}", "${name}", "owner")`, function(err, result) {
-                                        if (err) {
-                                            announce("Failed to create team, please report this issue in Discord.", client);
-                                            console.error(err);
-                                        } else {
-                                            log(`Created new team with name "${name}" for owner "${owner}"`);
-                                            announce("Successfully created team named " + name, client);
-                                        }
-                                    });
+                                    if (result.length > 0) {
+                                        announce("Team already exists", client);
+                                    } else {
+                                        database.query(`INSERT INTO cpvp_teams (uuid, team_name, team_rank) VALUES ("${uuid}", "${name}", "owner")`, function(err, result) {
+                                            if (err) {
+                                                announce("Failed to create team, please report this issue in Discord.", client);
+                                                console.error(err);
+                                            } else {
+                                                log(`Created new team with name "${name}" for owner "${owner}"`);
+                                                announce("Successfully created team named " + name, client);
+                                            }
+                                        });
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
-                }
+                });
             });
-        });
+        } else {
+            announce("Team names cannot be longer than 16 characters!", client);
+        }
     } else {
-        announce("Team names cannot be longer than 16 characters!", client);
+        announce("Usage: /team create {name}", client);
     }
 }
 
@@ -575,7 +581,6 @@ function openArenas(a = arenas) {
 
 function joinArena(arena, client, config, onticord) {
     var server = config.arenas[arena];
-
     if (server) {
         log(`Sending ${client.username} to arena ${arena}`);
         onticord.sendClient(client, onticord.servers[server].host, onticord.servers[server].port)
@@ -591,6 +596,7 @@ function leaveArena(client, config, onticord) {
         onticord.sendClient(client, config[config.lobby].host, onticord.servers[config.lobby].port)
         client.currentServer = config.lobby;
         client.currentArena = undefined;
+        announce("Taking you to the lobby.", client)
     } else {
         announce("You're already in the lobby.", client)
     }
