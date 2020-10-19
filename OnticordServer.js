@@ -53,6 +53,11 @@ module.exports = class OnticordServer extends EventEmitter {
 
 		this.players = new Map();
 
+		this.players.getByUUID = function(uuid, players) {
+			var username = [...players].find(([key, player]) => player.uuid === uuid)[0];
+			return players.get(username);
+		}
+
 		this.core.on('login', (client) => {
 			//add player to map on login
 			this.players.set(client.username, client);
