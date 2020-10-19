@@ -181,6 +181,7 @@ module.exports = (onticord) => {
                                         {
                                             'text': `Look up stats of your or a supplied team\n`,
                                             'color': 'white'
+                                        }
                                         
                                     ]
                                 })
@@ -201,6 +202,22 @@ module.exports = (onticord) => {
                             }
                         } else {
                             announce("Usage: /duel {username}", client);
+                        }
+                        cancelDefault();
+                    } else if (segments[0] === "/challenge") {
+                        if (segments[1]) {
+
+                            if (segments[1] == "accept") {
+                                if (segments[2]) {
+                                    acceptChallenge(client, segments[2], config, connection, onticord);
+                                } else {
+                                    announce("Usage: /challenge accept {team}", client);
+                                }
+                            } else {
+                                challenge(client, segments[1], connection, onticord); 
+                            }
+                        } else {
+                            announce("Usage: /challenge {team}", client);
                         }
                         cancelDefault();
                     }
@@ -415,6 +432,9 @@ function checkKill(killer, victim, database, config, onticord, a = arenas) {
                 }
             })
 
+        } else if (victim.event.type == "match") {
+            //handle match kills
+            log("Match kill");
         }
     } else {
         // not in event, disregard
@@ -428,6 +448,8 @@ function createTeam(name, owner, database, client) {
         if (name.length < 16) {
             getUUID(owner, function(err, uuid) {
                 //check if user owns another team
+                uuid = uuidDashes(uuid);
+
                 database.query(`SELECT * FROM cpvp_teams WHERE UUID like "${uuid}" AND team_rank LIKE "owner"`, function(err, result) {
                     if (err) {
                         announce("Failed to create team, please report this issue in Discord.", client);
@@ -468,6 +490,51 @@ function createTeam(name, owner, database, client) {
     }
 }
 
+
+function getTeam(name, database, callback) {
+    database.query(`SELECT * FROM cpvp_teams WHERE team_name LIKE "${name}"`, function(err, result) {
+        if (err) {
+            callback(err);
+            console.error(err);
+        } else {
+            callback(null, result)
+        }
+    });
+}
+
+function getPlayersTeam(uuid, database, callback) {
+    database.query(`SELECT * FROM cpvp_teams WHERE uuid = "${uuid}"`, function(err, result) {
+        if (err) {
+            callback(err);
+            console.error(err);
+        } else {
+            callback(null, result)
+        }
+    });
+}
+
+function isTeamOwner(uuid, database, callback) {
+    database.query(`SELECT * FROM cpvp_teams WHERE uuid = "${uuid}" AND team_rank LIKE "owner"`, function(err, result) {
+        if (err) {
+            callback(err);
+            console.error(err);
+        } else {
+            callback(null, result)
+        }
+    });
+}
+function isTeamOfficer(uuid, database, callback) {
+    console.log(uuid);
+    database.query(`SELECT * FROM cpvp_teams WHERE uuid LIKE "${uuid}" AND team_rank LIKE "owner" OR uuid LIKE "${uuid}" AND team_rank LIKE "officer"`, function(err, result) {
+        if (err) {
+            callback(err);
+            console.error(err);
+        } else {
+            callback(null, result)
+        }
+    });
+}
+
 function teamRank(name, rank, database, callback) {
     database.query(`SELECT * FROM cpvp_teams WHERE team_name like "${name}" AND team_rank LIKE "${rank}"`, function(err, result) {
         if (err) {
@@ -479,7 +546,7 @@ function teamRank(name, rank, database, callback) {
     });
 }
 
-function teamInfo(name, database, client) {
+function teamStats(name, database, client) {
 
 }
 
@@ -494,6 +561,170 @@ function acceptInvite(name, database, client) {
 function leaveTeam(name, database, client) {
 
 }
+
+//Match handling
+var matches = new Map();
+
+function challenge(client, opp, database, onticord) {
+    getPlayersTeam(client.uuid, database, function(err, team) {
+        if (err){
+            console.error(error);
+            announce("Error getting your team, please report on Discord.", client);
+        } else {
+            if (team && team[0] && team[0].team_name) {
+                if (team[0].team_rank == "owner" || team[0].team_rank == "officer") {
+                    getTeam(opp, database, function(err, opponent) {
+                        if (err) {
+                            announce("Error getting opposing team, please report on Discord.", client);
+                        } else {
+                            if (opponent) {
+                                getTeam(team[0].team_name, database, function(err, challenger) {
+                                    if (err) {
+                                        console.error(error);
+                                        announce("Error getting your team, please report on Discord.", client);
+                                    } else {
+                                        if (challenger) {
+                                            //challenger and opponent variables are set
+                                            matches.set(challenger[0].team_name, [challenger, opponent]);
+                                            console.log(matches);
+                                            challenger.forEach(function(player) {
+                                                onlinePlayer = onticord.players.getByUUID(player.uuid, onticord.players)
+                                                if (onlinePlayer) {
+                                                    //player is online
+                                                    announce(`Your team has challenged ${opponent[0].team_name}!`, onlinePlayer);
+                                                }
+                                            });
+                                            opponent.forEach(function(player) {
+                                                onlinePlayer = onticord.players.getByUUID(player.uuid, onticord.players)
+                                                if (onlinePlayer) {
+                                                    //player is online
+                                                    if (player.team_rank == "owner" || player.team_rank == "officer") {
+                                                        announce(`${challenger[0].team_name} wants to start a match with your team. Type /challenge accept ${challenger[0].team_name}`, onlinePlayer);
+                                                    }
+                                                }
+                                            });                                        
+                                        } else {
+                                            announce("Could not find team members.", client);
+                                        }
+                                    }
+                                })
+                            }
+                            else {
+                                announce("Could not find that team.", client);
+                            }
+                            
+                        }
+                    })
+                }
+                else {
+                    announce("You do not have permission to challenge teams", client);
+                }
+            } else {
+                announce("You don't seem to be a part of a team", client);
+            }
+        }
+    })
+}
+function acceptChallenge(client, opp, config, database, onticord) {
+    getPlayersTeam(client.uuid, database, function(err, team) {
+        if (err){
+            console.error(error);
+            announce("Error getting your team, please report on Discord.", client);
+        } else {
+            if (team && team[0] && team[0].team_name) {
+                if (team[0].team_rank == "owner" || team[0].team_rank == "officer") {
+                    var match = matches.get(opp);
+                    if (match) {
+                        var challenger = match[0];
+                        var opponent = match[1];
+
+                        if (openArenas()[Object.keys(openArenas())[0]]) {
+                            var arena = openArenas()[Object.keys(openArenas())[0]];
+                            
+                            challenger.forEach(function(player) {
+                                var onlinePlayer = onticord.players.getByUUID(player.uuid, onticord.players)
+                                if (onlinePlayer) {
+                                    
+                                    var event = {
+                                        type: "match",
+                                        team: player.team_name,
+                                        arena
+                                    };
+                                    log(`Setting player ${onlinePlayer.username} from ${player.team_name} to match with ${opponent[0].team_name} in arena ${arena}`);
+                                    onlinePlayer.event = event;
+                                    announce(`Match with ${opponent[0].team_name} starting in 10 seconds in arena ${arena}!`, onlinePlayer);
+                                    setTimeout(function() {
+                                        joinArena(arena, onlinePlayer, config, onticord);
+                                        announce(`Joined arena ${arena}!`, onlinePlayer);
+                                    }, 10000);
+                                }
+                            });
+                            opponent.forEach(function(player) {
+                                var onlinePlayer = onticord.players.getByUUID(player.uuid, onticord.players)
+                                if (onlinePlayer) {
+                                    var event = {
+                                        type: "match",
+                                        team: player.team_name,
+                                        arena
+                                    };
+                                    log(`Setting player ${onlinePlayer.username} from ${player.team_name} to match with ${challenger[0].team_name} in arena ${arena}`);
+                                    event.team = player.team_name;
+                                    onlinePlayer.event = event;
+                                    announce(`Match with ${challenger[0].team_name} starting in 10 seconds in arena ${arena}!`, onlinePlayer);
+                                    setTimeout(function() {
+                                        joinArena(arena, onlinePlayer, config, onticord)
+                                        announce(`Joined arena ${arena}!`, onlinePlayer);
+                                    }, 10000);
+                                }
+                            }); 
+                            
+                            
+                        } else {
+
+                            matches.delete(opp);
+                        
+                            challenger.forEach(function(player) {
+                                onlinePlayer = onticord.players.getByUUID(player.uuid, onticord.players)
+                                if (onlinePlayer) {
+                                    if (player.team_rank == "owner" || player.team_rank == "officer") {
+                                        announce(`Match with ${opponent[0].team_name} canceled due to no open arenas.`, onlinePlayer);
+                                    }
+                                    
+                                    
+                                }
+                            });
+                            opponent.forEach(function(player) {
+                                onlinePlayer = onticord.players.getByUUID(player.uuid, onticord.players)
+                                if (onlinePlayer) {
+                                    if (player.team_rank == "owner" || player.team_rank == "officer") {
+                                        announce(`Match with ${opponent[0].team_name} canceled due to no open arenas.`, onlinePlayer);
+                                    }
+                                    
+                                }
+                            }); 
+                        }
+
+                          
+
+                    } else {
+                        announce("No pending challenge found.", client);
+                    }
+                }
+                else {
+                    announce("You do not have permission to challenge teams", client);
+                }
+            } else {
+                announce("You don't seem to be a part of a team", client);
+            }
+        }
+    })
+}
+function getMatchByOpponent(opponent, m = matches) {
+    var match = [...matches].find(([key, match]) => match === opponent)[0];
+	return m.get(match);
+}
+
+
 
 //Duel handling
 function startDuel(opponent, database, client, onticord) {
@@ -536,8 +767,7 @@ function acceptDuel(opponent, database, client, config, onticord) {
                 //log duel in database
                 var timestamp = Date.now();
                 if (openArenas()[Object.keys(openArenas())[0]]) {
-                    var arena = openArenas()[Object.keys(openArenas())[0]]
-                    console.log(arena);
+                    var arena = openArenas()[Object.keys(openArenas())[0]];
                     database.query(`INSERT INTO cpvp_duels  (player1, player2, active, arena, winner, timestamp) VALUES ("${opponent.uuid}", "${client.uuid}", true, "${arena}", "none", "${timestamp}")`, function(err, result) {
                         if (err) {
                             announce("Failed to initiate duel. Please report this issue in Discord", client);
