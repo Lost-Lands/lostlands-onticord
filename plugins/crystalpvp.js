@@ -136,7 +136,71 @@ module.exports = (onticord) => {
                             cancelDefault();
                         } else if (segments[1] === "stats") {
                             if (segments[2]) {
-                                //look up specific team
+                                teamStats(segments[2], connection, function(err, team) {
+                                    if (err) {
+                                        console.error(err);
+                                        announce("Error getting team stats, please report on Discord.", client);
+                                    } else {
+                                        if (team) {
+
+                                            var message = {
+                                                'text': '',
+                                                'extra': [{
+                                                        'bold': true,
+                                                        'text': team.members[0].team_name+"'s Stats\n",
+                                                        'color': 'yellow'
+                                                    }
+                                                ]
+                                            }
+
+                                            message.extra.push({
+                                                'text': "Members: ",
+                                                'color': 'blue'
+                                            })
+                                            message.extra.push({
+                                                'text': team.members.length + "\n",
+                                                'color': 'white'
+                                            });
+
+
+                                            var totalCount = 0;
+                                            var winCount = 0;
+                                            var lossCount = 0;
+                                            team.matches.forEach(function(match) {
+                                                console.log(match);
+                                                totalCount++
+                                                if (match.winner == team.members[0].team_name) {
+                                                    winCount++;
+                                                } else {
+                                                    lossCount++
+                                                }
+                                            });
+                                            if (totalCount > 0) {
+                                                var winPercentage = (winCount / totalCount) * 100
+                                            } else {
+                                                var winPercentage = 0;
+                                            }
+                                            
+
+                                            message.extra.push({
+                                                'text': "Wins: ",
+                                                'color': 'blue'
+                                            })
+                                            message.extra.push({
+                                                'text': `${winCount}/${totalCount} (${winPercentage}%)`,
+                                                'color': 'white'
+                                            });
+                                            
+                                            client.write('chat', {'message': JSON.stringify(message)});
+                                             
+
+
+                                        } else {
+                                            announce("Team not found.", client)
+                                        }
+                                    }
+                                })
+                                cancelDefault();
                             }
                             else {
                                 //check if the user belongs to a team and get its stats
@@ -561,7 +625,16 @@ function getTeam(name, database, callback) {
         }
     });
 }
-
+function getTeamMatches(name, database, callback) {
+    database.query(`SELECT * FROM cpvp_matches WHERE team1 LIKE "${name}" OR team2 LIKE "${name}"`, function(err, result) {
+        if (err) {
+            callback(err);
+            console.error(err);
+        } else {
+            callback(null, result)
+        }
+    });
+}
 function getPlayersTeam(uuid, database, callback) {
     database.query(`SELECT * FROM cpvp_teams WHERE uuid = "${uuid}"`, function(err, result) {
         if (err) {
@@ -606,8 +679,29 @@ function teamRank(name, rank, database, callback) {
     });
 }
 
-function teamStats(name, database, client) {
-
+function teamStats(name, database, callback) {
+    getTeam(name, database, function(err, team_members) {
+        if (err) {
+            callback(err);
+        } else {
+            if (team_members && team_members[0] && team_members[0].team_name) {
+                getTeamMatches(name, database, function(err, team_matches) {
+                    if (err) {
+                        callback(err);
+                    } else {
+                        var team = {
+                            members: team_members,
+                            matches: team_matches
+                        }
+                        callback(null, team);
+                    }
+                })
+               
+            } else {
+                callback(null, null);
+            }
+        }
+    });
 }
 
 function disbandTeam(name, database, client) {
