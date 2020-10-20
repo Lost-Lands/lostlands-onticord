@@ -121,7 +121,7 @@ module.exports = (onticord) => {
                     } else if (segments[0] === '/leave') {
                         leaveArena(client, config, onticord);
                         cancelDefault();
-                    } else if (segments[0] === '/team') {
+                    } else if (segments[0] === '/team' || segments[0] === '/t') {
                         if (segments[1] === "create") {
                             createTeam(segments[2], client.username, connection, client);
                             cancelDefault();
@@ -142,7 +142,6 @@ module.exports = (onticord) => {
                                         announce("Error getting team stats, please report on Discord.", client);
                                     } else {
                                         if (team) {
-
                                             var message = {
                                                 'text': '',
                                                 'extra': [{
@@ -152,7 +151,6 @@ module.exports = (onticord) => {
                                                     }
                                                 ]
                                             }
-
                                             message.extra.push({
                                                 'text': "Members: ",
                                                 'color': 'blue'
@@ -161,18 +159,12 @@ module.exports = (onticord) => {
                                                 'text': team.members.length + "\n",
                                                 'color': 'white'
                                             });
-
-
                                             var totalCount = 0;
                                             var winCount = 0;
-                                            var lossCount = 0;
                                             team.matches.forEach(function(match) {
-                                                console.log(match);
                                                 totalCount++
                                                 if (match.winner == team.members[0].team_name) {
                                                     winCount++;
-                                                } else {
-                                                    lossCount++
                                                 }
                                             });
                                             if (totalCount > 0) {
@@ -250,7 +242,7 @@ module.exports = (onticord) => {
                                             'color': 'blue'
                                         },
                                         {
-                                            'text': `Look up stats of your or a supplied team\n`,
+                                            'text': `Look up stats of your or a supplied team`,
                                             'color': 'white'
                                         }
                                         
