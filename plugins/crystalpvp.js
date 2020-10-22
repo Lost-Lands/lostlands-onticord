@@ -133,7 +133,7 @@ module.exports = (onticord) => {
                             createTeam(segments[2], client.username, connection, client);
                             cancelDefault();
                         } else if (segments[1] === "disband") {
-
+                            disbandTeam(connection, client);
                             cancelDefault();
                         } else if (segments[1] === "invite") {
                             if (segments[2]) {
@@ -151,7 +151,7 @@ module.exports = (onticord) => {
                             }
                             cancelDefault();
                         } else if (segments[1] === "leave") {
-
+                            leaveTeam(connection, client);
                             cancelDefault();
                         } else if (segments[1] === "stats") {
                             if (segments[2]) {
@@ -222,6 +222,7 @@ module.exports = (onticord) => {
                                     'text': '',
                                     'extra': [{
                                             'text': 'CrystalPVP Teams Help\n',
+                                            'bold': true,
                                             'color': 'yellow'
                                         },
                                         {
@@ -716,8 +717,31 @@ function teamStats(name, database, callback) {
     });
 }
 
-function disbandTeam(name, database, client) {
-
+function disbandTeam(database, client) {
+    getPlayersTeam(client.uuid, database, function(err, team) {
+        if (err) {
+            console.error(error);
+            announce("Error getting your team, please report on Discord.", client);
+        } else {
+            if (team && team[0] && team[0].team_name) {
+                if (team[0].team_rank == "owner") {
+                    database.query(`DELETE FROM cpvp_teams WHERE team_name = "${team[0].team_name}"`, function(err, result) {
+                        if (err) {
+                            console.error(err);
+                            announce("Failed to disband team, please report on Discord.", client);
+                        } else {
+                            announce(`You have disbanded ${team[0].team_name}.`, client)
+                        }
+                    });
+                }
+                else {
+                    announce("You do not have permission to disband your team.", client);
+                }
+            } else {
+                announce("You are not part of a team.", client);
+            }
+        }
+    })
 }
 
 function sendInvite(recipient, database, client, onticord) {
@@ -732,7 +756,7 @@ function sendInvite(recipient, database, client, onticord) {
 
                     if (invitedPlayer) {
 
-                        database.query(`SELECT * FROM cpvp_teaminvites WHERE uuid = "${invitedPlayer.uuid}" AND team = "${team[0].team_name}"`, function(err, result) {
+                        database.query(`SELECT * FROM cpvp_teaminvites WHERE uuid = "${invitedPlayer.uuid}" AND team = "${team[0].team_name}" AND active = true`, function(err, result) {
                             if (err) {
                                 console.error(err);
                                 announce("Failed to retrieve existing team invites, please report on Discord", client);
@@ -809,13 +833,31 @@ function acceptInvite(name, database, client) {
     })
 }
 
-function leaveTeam(name, database, client) {
+function leaveTeam(database, client) {
+    getPlayersTeam(client.uuid, database, function(err, team) {
+        if (err) {
+            console.error(error);
+            announce("Error getting your team, please report on Discord.", client);
+        } else {
+            if (team && team[0] && team[0].team_name) {
+                database.query(`DELETE FROM cpvp_teams WHERE uuid = "${client.uuid}"`, function(err, result) {
+                    if (err) {
+                        console.error(err);
+                        announce("Failed to leave team, please report on Discord.", client);
+                    } else {
+                        announce(`You have left ${team[0].team_name}.`, client)
+                    }
+                });
 
+            } else {
+                announce("You are not part of a team.", client)
+            }
+        }
+    })
 }
 
 //Match handling
 var matches = new Map();
-
 function challenge(client, opp, database, onticord) {
     getPlayersTeam(client.uuid, database, function(err, team) {
         if (err){
