@@ -42,8 +42,15 @@ module.exports = (onticord) => {
                     log("Successfully ran query for MySQL cpvp_matches database");
                 }
             });
+            connection.query("CREATE TABLE IF NOT EXISTS `cpvp_teaminvites` ( `ID` INT(6) NOT NULL AUTO_INCREMENT , `uuid` VARCHAR(36) NOT NULL, `team` TEXT NOT NULL , `active` BOOLEAN NOT NULL, PRIMARY KEY (`ID`)) ENGINE = InnoDB;", function(err, result) {
+                if (err) {
+                    throw err;
+                } else {
+                    log("Successfully ran query for MySQL cpvp_teaminvites database");
+                }
+            });
 
-
+            
 
             onticord.on('serverPacket', (meta, data, client, cancelDefault) => {
                 if (meta.name == "chat") {
@@ -128,8 +135,20 @@ module.exports = (onticord) => {
                         } else if (segments[1] === "disband") {
 
                             cancelDefault();
-                        } else if (segments[1] === "accept") {
+                        } else if (segments[1] === "invite") {
+                            if (segments[2]) {
+                                sendInvite(segments[2], connection, client, onticord);
+                            } else {
+                                announce("Usage: /team invite {username}", client);
+                            }
 
+                            cancelDefault();
+                        } else if (segments[1] === "accept") {
+                            if (segments[2]) {
+                                acceptInvite(segments[2], connection, client);
+                            } else {
+                                announce("Usage /team accept {team}", client);
+                            }
                             cancelDefault();
                         } else if (segments[1] === "leave") {
 
@@ -559,6 +578,7 @@ function checkKill(killer, victim, database, config, onticord, a = arenas, m = m
 }
 
 //team handling
+var teamInvites = new Map();
 function createTeam(name, owner, database, client) {
     if (name) {
         if (name.length < 16) {
@@ -700,8 +720,93 @@ function disbandTeam(name, database, client) {
 
 }
 
-function acceptInvite(name, database, client) {
+function sendInvite(recipient, database, client, onticord) {
+    getPlayersTeam(client.uuid, database, function(err, team) {
+        if (err) {
+            console.error(error);
+            announce("Error getting your team, please report on Discord.", client);
+        } else {
+            if (team && team[0] && team[0].team_name) {
+                if (team[0].team_rank == "owner" || team[0].team_rank == "officer") {
+                    invitedPlayer = onticord.players.get(recipient);
 
+                    if (invitedPlayer) {
+
+                        database.query(`SELECT * FROM cpvp_teaminvites WHERE uuid = "${invitedPlayer.uuid}" AND team = "${team[0].team_name}"`, function(err, result) {
+                            if (err) {
+                                console.error(err);
+                                announce("Failed to retrieve existing team invites, please report on Discord", client);
+                            } else {
+                                if (result.length > 0) {
+                                    announce("You've already invited that player to your team.", client);
+                                } else {
+                                    database.query(`INSERT INTO cpvp_teaminvites  (uuid, team, active) VALUES ("${invitedPlayer.uuid}", "${team[0].team_name}", true)`, function(err, result) {
+                                        if (err) {
+                                            console.error(err);
+                                            announce("Failed to send invite, please report on Discord", client);
+                                        } else {
+                                            announce("Invite sent.", client);
+                                            announce(`You've been invited to join ${team[0].team_name}. Type /team <accept/deny> ${team[0].team_name} to accept or deny the invite.`, invitedPlayer);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+
+
+                        
+                    } else {
+                        announce("Could not find that player.", client);
+                    }
+                }
+                else {
+                    announce("You do not have permission to invite people.", client);
+                }
+            } else {
+                announce("You don't seem to be a part of a team", client);
+            }
+        }
+    })
+}
+
+function acceptInvite(name, database, client) {
+    getPlayersTeam(client.uuid, database, function(err, team) {
+        if (err) {
+            console.error(error);
+            announce("Error getting your team, please report on Discord.", client);
+        } else {
+            if (team && team[0] && team[0].team_name) {
+                announce("You can only be on one team.", client);
+            } else {
+                database.query(`SELECT * FROM cpvp_teaminvites WHERE uuid = "${client.uuid}" AND team = "${name}" AND active = true`, function(err, result) {
+                    if (err) {
+                        console.error(err);
+                        announce("Failed to acccept invite, please report on Discord", client);
+                    } else {
+                        if (result.length > 0) {
+                            database.query(`UPDATE cpvp_teaminvites SET active = false WHERE uuid = "${client.uuid}" AND team = "${name}"`, function(err, result) {
+                                if (err) {
+                                    console.error(err);
+                                    announce("Failed to acccept invite, please report on Discord", client);
+                                } else {
+                                    database.query(`INSERT INTO cpvp_teams (uuid, team_name, team_rank) VALUES ("${client.uuid}", "${name}", "member")`, function(err, result) {
+                                        if (err) {
+                                            console.error(err);
+                                            announce("Failed to update your team, please report on Discord.", client);
+                                        } else {
+                                            announce(`Accepted invite to ${name}!`, client)
+                                        }
+                                    });
+                                }
+                            });
+                        } else {
+                            announce("You have not been invited to that team.", client);
+                        }
+                    }
+                });
+            }
+        }
+    })
 }
 
 function leaveTeam(name, database, client) {
@@ -904,12 +1009,6 @@ function acceptChallenge(client, opp, config, database, onticord) {
         }
     })
 }
-function getMatchByOpponent(opponent, m = matches) {
-    var match = [...matches].find(([key, match]) => match === opponent)[0];
-	return m.get(match);
-}
-
-
 
 //Duel handling
 function startDuel(opponent, database, client, onticord) {
