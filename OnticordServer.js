@@ -66,13 +66,12 @@ module.exports = class OnticordServer extends EventEmitter {
 			if (this.config.bungeeForward) {
 				if (client.serverHost) { //checks if player is coming from a bungeecord server
 					var serverHost = client.serverHost.split('\u0000');
-					if (serverHost[3]) {
-						client.uuid = serverHost[2];
+					if (serverHost[2]) {
+						var uuid = serverHost[2];
+						client.uuid = uuid.slice(0, 8) + "-" + uuid.slice(8, 12) + "-" + uuid.slice(12, 16) + "-" + uuid.slice(16, 20) + "-" + uuid.slice(20, 32)
 					}
 				}
 			}
-			
-
 
 			this.players.set(client.username, client);
 
