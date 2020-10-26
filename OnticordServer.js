@@ -62,6 +62,18 @@ module.exports = class OnticordServer extends EventEmitter {
 
 		this.core.on('login', (client) => {
 			//add player to map on login
+
+			if (this.config.bungeeForward) {
+				if (client.serverHost) { //checks if player is coming from a bungeecord server
+					var serverHost = client.serverHost.split('\u0000');
+					if (serverHost[3]) {
+						client.uuid = serverHost[2];
+					}
+				}
+			}
+			
+
+
 			this.players.set(client.username, client);
 
 			if (config.whitelist == true) {
