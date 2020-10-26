@@ -54,8 +54,10 @@ module.exports = class OnticordServer extends EventEmitter {
 		this.players = new Map();
 
 		this.players.getByUUID = function(uuid, players) {
-			var username = [...players].find(([key, player]) => player.uuid === uuid)[0];
-			return players.get(username);
+			var username = [...players].find(([key, player]) => player.uuid === uuid);
+			if (username) {
+				return players.get(username[0]);
+			}
 		}
 
 		this.core.on('login', (client) => {
@@ -78,7 +80,8 @@ module.exports = class OnticordServer extends EventEmitter {
 			}
 			client.on('end', () => {
 				//remove player from map on leave
-				this.players.delete(client.username);
+				this.players.delete(client.username); 
+				
 			});
 		});
 
@@ -103,11 +106,9 @@ module.exports = class OnticordServer extends EventEmitter {
 				}
 			}
 
-			client.fakeClient.removeAllListeners()
 			client.removeAllListeners('packet')
-
+			client.fakeClient.removeAllListeners()
 			client.fakeClient.end('You have been disconnected.')
-
 			delete client.fakeClient
 		}
 
@@ -168,10 +169,12 @@ module.exports = class OnticordServer extends EventEmitter {
 			}
 
 			this.emit('serverPacket', meta, data, client.fakeClient, cancelMethod)
-
-			if (meta.state === mc.states.PLAY && client.fakeClient.state === mc.states.PLAY && allowPacket) {
-				client.write(meta.name, data)
+			if (client.fakeClient) {
+				if (meta.state === mc.states.PLAY && client.fakeClient.state === mc.states.PLAY && allowPacket) {
+					client.write(meta.name, data)
+				}
 			}
+			
 		})
 
 		client.on('packet', (data, meta) => {
@@ -198,7 +201,6 @@ module.exports = class OnticordServer extends EventEmitter {
 			if (client.fakeClient) {
 				client.fakeClient.end()
 			}
-			
 		})
 	}
 }
